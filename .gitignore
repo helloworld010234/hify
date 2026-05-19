@@ -1,0 +1,33 @@
+# Maven
+**/target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Java
+*.class
+
+# Eclipse / STS
+.classpath
+.project
+.settings/
+
+# IntelliJ IDEA
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp
+*.tmp
+*.swp
+*~
+
+# Playwright MCP temp logs
+.playwright-mcp/
+
+# Local environment
+.env
+.env.local
