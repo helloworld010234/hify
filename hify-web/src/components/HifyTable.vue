@@ -71,6 +71,10 @@ onMounted(() => {
   fetchData()
 })
 
+defineEmits<{
+  'expand-change': [row: any, expandedRows: any[]]
+}>()
+
 defineExpose({
   refresh
 })
@@ -81,7 +85,12 @@ defineExpose({
     <div class="toolbar">
       <slot name="toolbar" />
     </div>
-    <el-table :data="tableData" v-loading="loading" stripe style="width: 100%">
+    <el-table :data="tableData" v-loading="loading" stripe style="width: 100%" @expand-change="(row: any, expandedRows: any[]) => $emit('expand-change', row, expandedRows)">
+      <el-table-column type="expand" v-if="$slots.expand">
+        <template #default="scope">
+          <slot name="expand" :row="scope.row" :$index="scope.$index" />
+        </template>
+      </el-table-column>
       <el-table-column
         v-for="col in columns"
         :key="col.prop"

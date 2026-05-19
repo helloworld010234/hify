@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * 供应商连通性测试结果
  */
@@ -34,11 +36,25 @@ public class ConnectionTestResult {
      */
     private String errorMessage;
 
-    public static ConnectionTestResult success(long latencyMs, int modelCount) {
+    /**
+     * 从远程拉取的模型列表（成功时填充）
+     */
+    private List<ModelInfo> models;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ModelInfo {
+        private String modelCode;
+        private String modelName;
+    }
+
+    public static ConnectionTestResult success(long latencyMs, int modelCount, List<ModelInfo> models) {
         return ConnectionTestResult.builder()
                 .success(true)
                 .latencyMs(latencyMs)
                 .modelCount(modelCount)
+                .models(models)
                 .build();
     }
 

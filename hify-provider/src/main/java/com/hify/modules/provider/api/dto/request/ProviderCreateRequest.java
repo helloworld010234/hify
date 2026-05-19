@@ -18,7 +18,6 @@ public class ProviderCreateRequest {
     @NotBlank(message = "供应商名称不能为空")
     private String name;
 
-    @JsonProperty("type")
     private String providerType;
 
     @NotBlank(message = "Base URL 不能为空")

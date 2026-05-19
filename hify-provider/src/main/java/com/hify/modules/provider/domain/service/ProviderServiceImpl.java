@@ -19,6 +19,7 @@ import com.hify.modules.provider.infra.mapper.ModelConfigMapper;
 import com.hify.modules.provider.infra.mapper.ProviderHealthMapper;
 import com.hify.modules.provider.infra.mapper.ProviderMapper;
 import com.hify.modules.provider.api.dto.response.ConnectionTestResult;
+import com.hify.modules.provider.domain.adapter.ProviderAdapterFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -40,7 +42,7 @@ public class ProviderServiceImpl implements ProviderService {
     private final ProviderMapper providerMapper;
     private final ModelConfigMapper modelConfigMapper;
     private final ProviderHealthMapper providerHealthMapper;
-    private final ProviderHealthChecker healthChecker;
+    private final ProviderAdapterFactory adapterFactory;
 
     // ==================== 创建 ====================
 
@@ -232,8 +234,44 @@ public class ProviderServiceImpl implements ProviderService {
                 wrapper
         );
 
+        // 批量查询模型数量和健康状态（避免 N+1）
+        List<Long> providerIds = page.getRecords().stream()
+                .map(Provider::getId)
+                .toList();
+
+        // 查询各供应商下活跃模型数量
+        Map<Long, Long> modelCountMap = new java.util.HashMap<>();
+        if (!providerIds.isEmpty()) {
+            List<ModelConfig> models = modelConfigMapper.selectList(
+                    new LambdaQueryWrapper<ModelConfig>()
+                            .in(ModelConfig::getProviderId, providerIds)
+                            .eq(ModelConfig::getStatus, "active")
+                            .eq(ModelConfig::getDeleted, 0)
+            );
+            modelCountMap.putAll(models.stream()
+                    .collect(java.util.stream.Collectors.groupingBy(
+                            ModelConfig::getProviderId,
+                            java.util.stream.Collectors.counting()
+                    )));
+        }
+
+        // 查询健康状态响应时间
+        Map<Long, Long> responseTimeMap = new java.util.HashMap<>();
+        if (!providerIds.isEmpty()) {
+            List<ProviderHealth> healths = providerHealthMapper.selectList(
+                    new LambdaQueryWrapper<ProviderHealth>()
+                            .in(ProviderHealth::getProviderId, providerIds)
+            );
+            responseTimeMap.putAll(healths.stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            ProviderHealth::getProviderId,
+                            h -> h.getResponseTimeMs() == null ? 0L : h.getResponseTimeMs(),
+                            (a, b) -> a
+                    )));
+        }
+
         List<ProviderListResponse> records = page.getRecords().stream()
-                .map(this::convertToListResponse)
+                .map(p -> convertToListResponse(p, modelCountMap, responseTimeMap))
                 .toList();
 
         return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), records);
@@ -242,17 +280,16 @@ public class ProviderServiceImpl implements ProviderService {
     // ==================== 连通性测试 ====================
 
     @Override
+    @CacheEvict(cacheNames = "provider-cache", allEntries = true)
     public ConnectionTestResult testConnection(Long id) {
         Provider provider = providerMapper.selectById(id);
         if (provider == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "供应商不存在: " + id);
         }
 
-        // TODO: apiKey 当前为掩码/明文存储，后续需通过 EncryptionService 解密后再测试
-        String apiKey = provider.getApiKey();
-
-        // 执行连通性测试
-        ConnectionTestResult result = healthChecker.test(provider, apiKey);
+        // 执行连通性测试（Adapter 内部读取 provider.apiKey）
+        ConnectionTestResult result = adapterFactory.getAdapter(provider.getProviderType())
+                .testConnection(provider);
 
         // 更新供应商健康状态（t_provider）
         provider.setHealthStatus(result.isSuccess() ? "healthy" : "unhealthy");
@@ -283,6 +320,28 @@ public class ProviderServiceImpl implements ProviderService {
             providerHealthMapper.updateById(health);
         }
 
+        // 同步远程模型列表到 t_model
+        if (result.isSuccess() && result.getModels() != null && !result.getModels().isEmpty()) {
+            // 软删除该供应商下旧模型
+            modelConfigMapper.delete(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.hify.modules.provider.infra.entity.ModelConfig>()
+                            .eq(com.hify.modules.provider.infra.entity.ModelConfig::getProviderId, id)
+            );
+            // 插入新模型
+            int sort = 0;
+            for (com.hify.modules.provider.api.dto.response.ConnectionTestResult.ModelInfo mi : result.getModels()) {
+                com.hify.modules.provider.infra.entity.ModelConfig model = new com.hify.modules.provider.infra.entity.ModelConfig();
+                model.setProviderId(id);
+                model.setModelCode(mi.getModelCode());
+                model.setModelName(mi.getModelName());
+                model.setModelType("chat");
+                model.setStatus("active");
+                model.setSortOrder(sort++);
+                modelConfigMapper.insert(model);
+            }
+            log.info("Provider models synced: id={}, code={}, models={}", id, provider.getCode(), result.getModels().size());
+        }
+
         log.info("Provider health checked: id={}, code={}, success={}, latency={}ms, models={}",
                 id, provider.getCode(), result.isSuccess(), result.getLatencyMs(), result.getModelCount());
 
@@ -291,7 +350,9 @@ public class ProviderServiceImpl implements ProviderService {
 
     // ==================== 私有方法 ====================
 
-    private ProviderListResponse convertToListResponse(Provider provider) {
+    private ProviderListResponse convertToListResponse(Provider provider,
+                                                        Map<Long, Long> modelCountMap,
+                                                        Map<Long, Long> responseTimeMap) {
         ProviderListResponse resp = new ProviderListResponse();
         resp.setId(provider.getId());
         resp.setCode(provider.getCode());
@@ -305,6 +366,8 @@ public class ProviderServiceImpl implements ProviderService {
         resp.setLastCheckTime(provider.getLastCheckTime());
         resp.setSortOrder(provider.getSortOrder());
         resp.setCreatedAt(provider.getCreatedAt());
+        resp.setModelCount(modelCountMap.getOrDefault(provider.getId(), 0L).intValue());
+        resp.setResponseTimeMs(responseTimeMap.getOrDefault(provider.getId(), 0L));
         return resp;
     }
 

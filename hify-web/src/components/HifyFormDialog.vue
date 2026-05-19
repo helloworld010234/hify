@@ -21,11 +21,15 @@ const formRef = ref<any>(null)
 
 const open = (data?: Record<string, any>) => {
   visible.value = true
-  isEdit.value = !!data
+  isEdit.value = !!(data && data.id)
   nextTick(() => {
     formData.value = data ? { ...data } : {}
     formRef.value?.clearValidate?.()
   })
+}
+
+const close = () => {
+  visible.value = false
 }
 
 const handleSubmit = async () => {
@@ -39,7 +43,8 @@ const emit = defineEmits<{
 }>()
 
 defineExpose({
-  open
+  open,
+  close
 })
 </script>
 

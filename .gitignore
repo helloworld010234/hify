@@ -31,3 +31,8 @@ Thumbs.db
 # Local environment
 .env
 .env.local
+
+# Local dev tools
+.playwright-cli/
+.agents/
+.claude/

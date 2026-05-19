@@ -18,7 +18,7 @@ public class ProviderListRequest {
     /**
      * 每页大小
      */
-    @JsonProperty("pageSize")
+    @JsonProperty("size")
     private Integer size = 20;
 
     /**

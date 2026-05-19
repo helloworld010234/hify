@@ -22,4 +22,14 @@ public class ProviderListResponse {
     private LocalDateTime lastCheckTime;
     private Integer sortOrder;
     private LocalDateTime createdAt;
+
+    /**
+     * 已启用的模型数量
+     */
+    private Integer modelCount;
+
+    /**
+     * 最近健康检查响应耗时（毫秒）
+     */
+    private Long responseTimeMs;
 }
