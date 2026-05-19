@@ -1,5 +1,6 @@
 package com.hify.modules.provider.api.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 /**
@@ -11,11 +12,13 @@ public class ProviderListRequest {
     /**
      * 当前页码
      */
+    @JsonProperty("page")
     private Integer current = 1;
 
     /**
      * 每页大小
      */
+    @JsonProperty("pageSize")
     private Integer size = 20;
 
     /**

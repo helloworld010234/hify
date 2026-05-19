@@ -1,5 +1,6 @@
 package com.hify.modules.provider.api.dto.request;
 
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.hify.modules.provider.domain.vo.AuthConfig;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -16,7 +17,6 @@ public class ProviderUpdateRequest {
     @NotBlank(message = "Base URL 不能为空")
     private String baseUrl;
 
-    @NotBlank(message = "鉴权类型不能为空")
     private String authType;
 
     /**
@@ -28,6 +28,16 @@ public class ProviderUpdateRequest {
      * 鉴权额外配置
      */
     private AuthConfig authConfig;
+
+    public String getApiKey() {
+        if (StringUtils.isNotBlank(apiKey)) {
+            return apiKey;
+        }
+        if (authConfig != null && StringUtils.isNotBlank(authConfig.getApiKey())) {
+            return authConfig.getApiKey();
+        }
+        return null;
+    }
 
     private Integer timeoutMs = 90000;
     private Integer maxRetries = 3;

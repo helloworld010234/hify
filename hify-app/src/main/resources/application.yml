@@ -14,6 +14,9 @@ spring:
       host: localhost
       port: 6379
       database: 0
+      password: your_redis_password
+  cache:
+    type: simple
 
 mybatis-plus:
   configuration:

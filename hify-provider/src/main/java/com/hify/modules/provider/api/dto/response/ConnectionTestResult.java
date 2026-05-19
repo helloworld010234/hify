@@ -1,4 +1,4 @@
-package com.hify.modules.provider.domain.vo;
+package com.hify.modules.provider.api.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

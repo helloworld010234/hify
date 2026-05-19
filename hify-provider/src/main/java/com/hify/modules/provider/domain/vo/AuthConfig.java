@@ -52,4 +52,12 @@ public class AuthConfig implements Serializable {
      * 例如：Ollama 的 keep_alive 时长、某些厂商的 organization-id 等
      */
     private String extra;
+
+    /**
+     * API 密钥（DTO 传输兼容字段）
+     * <p>
+     * 前端习惯将 apiKey 放在 authConfig 对象内统一传递，
+     * Service 层会提取此值存入 t_provider.api_key 字段并加密。
+     */
+    private String apiKey;
 }

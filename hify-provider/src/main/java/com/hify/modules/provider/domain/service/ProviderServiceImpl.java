@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hify.common.exception.BizException;
+import com.hify.common.exception.ErrorCode;
 import com.hify.common.web.PageResult;
 import com.hify.modules.provider.api.ProviderService;
 import com.hify.modules.provider.api.dto.request.ProviderCreateRequest;
@@ -47,9 +48,19 @@ public class ProviderServiceImpl implements ProviderService {
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(cacheNames = "provider-cache", allEntries = true)
     public Long create(ProviderCreateRequest request) {
+        // 0. 自动推断缺失字段
+        String code = request.getCode();
+        if (StringUtils.isBlank(code)) {
+            code = autoGenerateCode(request.getName());
+            request.setCode(code);
+        }
+        if (StringUtils.isBlank(request.getAuthType())) {
+            request.setAuthType(inferAuthType(request.getProviderType()));
+        }
+
         // 1. 校验编码唯一性
         if (providerMapper.selectByCode(request.getCode()) != null) {
-            throw new BizException("供应商编码已存在: " + request.getCode());
+            throw new BizException(ErrorCode.PARAM_ERROR, "供应商编码已存在: " + request.getCode());
         }
 
         // 2. 校验名称唯一性（排除已删除）
@@ -58,7 +69,7 @@ public class ProviderServiceImpl implements ProviderService {
                         .eq(Provider::getName, request.getName())
         );
         if (nameCount > 0) {
-            throw new BizException("供应商名称已存在: " + request.getName());
+            throw new BizException(ErrorCode.PARAM_ERROR, "供应商名称已存在: " + request.getName());
         }
 
         // 3. 构建实体
@@ -91,7 +102,7 @@ public class ProviderServiceImpl implements ProviderService {
     public void update(Long id, ProviderUpdateRequest request) {
         Provider provider = providerMapper.selectById(id);
         if (provider == null) {
-            throw new BizException("供应商不存在: " + id);
+            throw new BizException(ErrorCode.NOT_FOUND, "供应商不存在: " + id);
         }
 
         // 校验名称唯一性（排除自身）
@@ -101,7 +112,7 @@ public class ProviderServiceImpl implements ProviderService {
                         .ne(Provider::getId, id)
         );
         if (nameCount > 0) {
-            throw new BizException("供应商名称已存在: " + request.getName());
+            throw new BizException(ErrorCode.PARAM_ERROR, "供应商名称已存在: " + request.getName());
         }
 
         provider.setName(request.getName());
@@ -132,7 +143,7 @@ public class ProviderServiceImpl implements ProviderService {
     public void delete(Long id) {
         Provider provider = providerMapper.selectById(id);
         if (provider == null) {
-            throw new BizException("供应商不存在: " + id);
+            throw new BizException(ErrorCode.NOT_FOUND, "供应商不存在: " + id);
         }
         providerMapper.deleteById(id);
         log.info("Provider deleted: id={}, code={}", id, provider.getCode());
@@ -145,7 +156,7 @@ public class ProviderServiceImpl implements ProviderService {
     public ProviderDetailResponse getById(Long id) {
         Provider provider = providerMapper.selectById(id);
         if (provider == null) {
-            throw new BizException("供应商不存在: " + id);
+            throw new BizException(ErrorCode.NOT_FOUND, "供应商不存在: " + id);
         }
 
         ProviderDetailResponse response = new ProviderDetailResponse();
@@ -234,7 +245,7 @@ public class ProviderServiceImpl implements ProviderService {
     public ConnectionTestResult testConnection(Long id) {
         Provider provider = providerMapper.selectById(id);
         if (provider == null) {
-            throw new BizException("供应商不存在: " + id);
+            throw new BizException(ErrorCode.NOT_FOUND, "供应商不存在: " + id);
         }
 
         // TODO: apiKey 当前为掩码/明文存储，后续需通过 EncryptionService 解密后再测试
@@ -305,5 +316,46 @@ public class ProviderServiceImpl implements ProviderService {
             return apiKey;
         }
         return apiKey.substring(0, 6) + "****" + apiKey.substring(apiKey.length() - 4);
+    }
+
+    /**
+     * 根据名称自动生成供应商编码
+     */
+    private String autoGenerateCode(String name) {
+        if (StringUtils.isBlank(name)) {
+            return "provider_" + System.currentTimeMillis();
+        }
+        String code = name.toLowerCase()
+                .replaceAll("[^a-z0-9]", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_+|_+$", "");
+        if (StringUtils.isBlank(code)) {
+            code = "provider";
+        }
+        // 若已存在则追加时间戳后缀
+        if (providerMapper.selectByCode(code) != null) {
+            code = code + "_" + System.currentTimeMillis();
+        }
+        return code;
+    }
+
+    /**
+     * 根据供应商协议类型推断默认鉴权类型
+     */
+    private String inferAuthType(String providerType) {
+        if (StringUtils.isBlank(providerType)) {
+            return "bearer";
+        }
+        String pt = providerType.toLowerCase();
+        if (pt.contains("anthropic")) {
+            return "api_key";
+        }
+        if (pt.contains("azure")) {
+            return "azure_api_key";
+        }
+        if (pt.contains("ollama")) {
+            return "none";
+        }
+        return "bearer";
     }
 }
