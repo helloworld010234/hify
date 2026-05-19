@@ -69,6 +69,9 @@ CREATE TABLE IF NOT EXISTS t_model (
     input_price         BIGINT          COMMENT '输入价格（每百万token，单位：分，如 200 = 2元）',
     output_price        BIGINT          COMMENT '输出价格（每百万token，单位：分）',
 
+    -- 扩展参数（JSON，存储模型特有的非结构化配置）
+    extra_params        JSON            COMMENT '扩展参数（如 reasoning_effort、top_p、frequency_penalty 等模型特有参数）',
+
     -- 状态管理
     status              VARCHAR(16)     NOT NULL DEFAULT 'active' COMMENT '模型状态：active(启用)/inactive(禁用)/deprecated(废弃)',
     is_default          TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '是否该供应商下的默认模型（一个供应商下仅一个默认）',
@@ -83,3 +86,23 @@ CREATE TABLE IF NOT EXISTS t_model (
     KEY idx_provider_status (provider_id, deleted, status),
     KEY idx_model_type (model_type, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LLM 模型配置表';
+
+-- ------------------------------------------
+-- t_provider_health：供应商健康状态快照表
+-- ------------------------------------------
+-- 设计意图：
+-- 1. ProviderHealth 不继承 BaseEntity（无 created_at/updated_at/deleted）
+-- 2. 存储每个供应商最新的健康检查快照，与 t_provider 配置表解耦
+-- 3. 支持独立查询健康看板，避免频繁扫描大字段的 t_provider 表
+-- ------------------------------------------
+CREATE TABLE IF NOT EXISTS t_provider_health (
+    id                  BIGINT          NOT NULL AUTO_INCREMENT COMMENT '主键',
+    provider_id         BIGINT          NOT NULL COMMENT '关联供应商ID（t_provider.id）',
+    health_status       VARCHAR(16)     NOT NULL DEFAULT 'unknown' COMMENT '健康状态：healthy/unhealthy/degraded/unknown',
+    consecutive_failures INT            NOT NULL DEFAULT 0 COMMENT '连续失败次数（>=3 触发熔断）',
+    last_check_time     DATETIME(3)     COMMENT '最近一次健康检查时间',
+    last_error_msg      VARCHAR(512)    COMMENT '最近一次错误信息',
+    response_time_ms    BIGINT          COMMENT '最近一次响应耗时（毫秒）',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_provider_id (provider_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='供应商健康状态快照表';
