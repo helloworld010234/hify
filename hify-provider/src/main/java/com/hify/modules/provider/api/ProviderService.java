@@ -52,4 +52,12 @@ public interface ProviderService {
      * @return 分页结果
      */
     PageResult<ProviderListResponse> list(ProviderListRequest request);
+
+    /**
+     * 连通性测试
+     *
+     * @param id 供应商 ID
+     * @return 测试结果（success、latencyMs、modelCount、errorMessage）
+     */
+    com.hify.modules.provider.api.dto.response.ConnectionTestResult testConnection(Long id);
 }

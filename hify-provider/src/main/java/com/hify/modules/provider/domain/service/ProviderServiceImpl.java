@@ -17,6 +17,7 @@ import com.hify.modules.provider.infra.entity.ProviderHealth;
 import com.hify.modules.provider.infra.mapper.ModelConfigMapper;
 import com.hify.modules.provider.infra.mapper.ProviderHealthMapper;
 import com.hify.modules.provider.infra.mapper.ProviderMapper;
+import com.hify.modules.provider.api.dto.response.ConnectionTestResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -38,6 +39,7 @@ public class ProviderServiceImpl implements ProviderService {
     private final ProviderMapper providerMapper;
     private final ModelConfigMapper modelConfigMapper;
     private final ProviderHealthMapper providerHealthMapper;
+    private final ProviderHealthChecker healthChecker;
 
     // ==================== 创建 ====================
 
@@ -224,6 +226,56 @@ public class ProviderServiceImpl implements ProviderService {
                 .toList();
 
         return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), records);
+    }
+
+    // ==================== 连通性测试 ====================
+
+    @Override
+    public ConnectionTestResult testConnection(Long id) {
+        Provider provider = providerMapper.selectById(id);
+        if (provider == null) {
+            throw new BizException("供应商不存在: " + id);
+        }
+
+        // TODO: apiKey 当前为掩码/明文存储，后续需通过 EncryptionService 解密后再测试
+        String apiKey = provider.getApiKey();
+
+        // 执行连通性测试
+        ConnectionTestResult result = healthChecker.test(provider, apiKey);
+
+        // 更新供应商健康状态（t_provider）
+        provider.setHealthStatus(result.isSuccess() ? "healthy" : "unhealthy");
+        provider.setConsecutiveFailures(
+                result.isSuccess()
+                        ? 0
+                        : (provider.getConsecutiveFailures() == null ? 0 : provider.getConsecutiveFailures()) + 1
+        );
+        provider.setLastCheckTime(java.time.LocalDateTime.now());
+        provider.setLastErrorMsg(result.isSuccess() ? null : result.getErrorMessage());
+        providerMapper.updateById(provider);
+
+        // 更新或插入健康快照（t_provider_health）
+        ProviderHealth health = providerHealthMapper.selectByProviderId(id);
+        if (health == null) {
+            health = new ProviderHealth();
+            health.setProviderId(id);
+        }
+        health.setHealthStatus(result.isSuccess() ? "healthy" : "unhealthy");
+        health.setConsecutiveFailures(provider.getConsecutiveFailures());
+        health.setLastCheckTime(java.time.LocalDateTime.now());
+        health.setLastErrorMsg(result.getErrorMessage());
+        health.setResponseTimeMs(result.getLatencyMs());
+
+        if (health.getId() == null) {
+            providerHealthMapper.insert(health);
+        } else {
+            providerHealthMapper.updateById(health);
+        }
+
+        log.info("Provider health checked: id={}, code={}, success={}, latency={}ms, models={}",
+                id, provider.getCode(), result.isSuccess(), result.getLatencyMs(), result.getModelCount());
+
+        return result;
     }
 
     // ==================== 私有方法 ====================
