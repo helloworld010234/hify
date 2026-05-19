@@ -1,0 +1,257 @@
+package com.hify.modules.provider.domain.service;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.hify.common.exception.BizException;
+import com.hify.common.web.PageResult;
+import com.hify.modules.provider.api.ProviderService;
+import com.hify.modules.provider.api.dto.request.ProviderCreateRequest;
+import com.hify.modules.provider.api.dto.request.ProviderListRequest;
+import com.hify.modules.provider.api.dto.request.ProviderUpdateRequest;
+import com.hify.modules.provider.api.dto.response.ProviderDetailResponse;
+import com.hify.modules.provider.api.dto.response.ProviderListResponse;
+import com.hify.modules.provider.infra.entity.ModelConfig;
+import com.hify.modules.provider.infra.entity.Provider;
+import com.hify.modules.provider.infra.entity.ProviderHealth;
+import com.hify.modules.provider.infra.mapper.ModelConfigMapper;
+import com.hify.modules.provider.infra.mapper.ProviderHealthMapper;
+import com.hify.modules.provider.infra.mapper.ProviderMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * Provider 管理 Service 实现
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ProviderServiceImpl implements ProviderService {
+
+    private final ProviderMapper providerMapper;
+    private final ModelConfigMapper modelConfigMapper;
+    private final ProviderHealthMapper providerHealthMapper;
+
+    // ==================== 创建 ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "provider-cache", allEntries = true)
+    public Long create(ProviderCreateRequest request) {
+        // 1. 校验编码唯一性
+        if (providerMapper.selectByCode(request.getCode()) != null) {
+            throw new BizException("供应商编码已存在: " + request.getCode());
+        }
+
+        // 2. 校验名称唯一性（排除已删除）
+        Long nameCount = providerMapper.selectCount(
+                new LambdaQueryWrapper<Provider>()
+                        .eq(Provider::getName, request.getName())
+        );
+        if (nameCount > 0) {
+            throw new BizException("供应商名称已存在: " + request.getName());
+        }
+
+        // 3. 构建实体
+        Provider provider = new Provider();
+        provider.setCode(request.getCode().trim().toLowerCase());
+        provider.setName(request.getName());
+        provider.setProviderType(request.getProviderType());
+        provider.setBaseUrl(request.getBaseUrl());
+        provider.setAuthType(request.getAuthType());
+        // TODO: apiKey 需要通过 EncryptionService 加密后存储
+        provider.setApiKey(maskApiKey(request.getApiKey()));
+        provider.setAuthConfig(request.getAuthConfig());
+        provider.setTimeoutMs(request.getTimeoutMs());
+        provider.setMaxRetries(request.getMaxRetries());
+        provider.setStatus(request.getStatus());
+        provider.setFallbackProviderId(request.getFallbackProviderId());
+        provider.setSortOrder(request.getSortOrder());
+        provider.setRemark(request.getRemark());
+
+        providerMapper.insert(provider);
+        log.info("Provider created: id={}, code={}", provider.getId(), provider.getCode());
+        return provider.getId();
+    }
+
+    // ==================== 更新 ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "provider-cache", allEntries = true)
+    public void update(Long id, ProviderUpdateRequest request) {
+        Provider provider = providerMapper.selectById(id);
+        if (provider == null) {
+            throw new BizException("供应商不存在: " + id);
+        }
+
+        // 校验名称唯一性（排除自身）
+        Long nameCount = providerMapper.selectCount(
+                new LambdaQueryWrapper<Provider>()
+                        .eq(Provider::getName, request.getName())
+                        .ne(Provider::getId, id)
+        );
+        if (nameCount > 0) {
+            throw new BizException("供应商名称已存在: " + request.getName());
+        }
+
+        provider.setName(request.getName());
+        provider.setBaseUrl(request.getBaseUrl());
+        provider.setAuthType(request.getAuthType());
+        // apiKey 为空表示不修改
+        if (StringUtils.isNotBlank(request.getApiKey())) {
+            // TODO: 加密后存储
+            provider.setApiKey(request.getApiKey());
+        }
+        provider.setAuthConfig(request.getAuthConfig());
+        provider.setTimeoutMs(request.getTimeoutMs());
+        provider.setMaxRetries(request.getMaxRetries());
+        provider.setStatus(request.getStatus());
+        provider.setFallbackProviderId(request.getFallbackProviderId());
+        provider.setSortOrder(request.getSortOrder());
+        provider.setRemark(request.getRemark());
+
+        providerMapper.updateById(provider);
+        log.info("Provider updated: id={}", id);
+    }
+
+    // ==================== 删除 ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "provider-cache", allEntries = true)
+    public void delete(Long id) {
+        Provider provider = providerMapper.selectById(id);
+        if (provider == null) {
+            throw new BizException("供应商不存在: " + id);
+        }
+        providerMapper.deleteById(id);
+        log.info("Provider deleted: id={}, code={}", id, provider.getCode());
+    }
+
+    // ==================== 详情（带缓存）====================
+
+    @Override
+    @Cacheable(cacheNames = "provider-cache", key = "'detail:' + #id")
+    public ProviderDetailResponse getById(Long id) {
+        Provider provider = providerMapper.selectById(id);
+        if (provider == null) {
+            throw new BizException("供应商不存在: " + id);
+        }
+
+        ProviderDetailResponse response = new ProviderDetailResponse();
+        response.setId(provider.getId());
+        response.setCode(provider.getCode());
+        response.setName(provider.getName());
+        response.setProviderType(provider.getProviderType());
+        response.setBaseUrl(provider.getBaseUrl());
+        response.setAuthType(provider.getAuthType());
+        response.setApiKeyMask(maskApiKey(provider.getApiKey()));
+        response.setAuthConfig(provider.getAuthConfig());
+        response.setTimeoutMs(provider.getTimeoutMs());
+        response.setMaxRetries(provider.getMaxRetries());
+        response.setStatus(provider.getStatus());
+        response.setHealthStatus(provider.getHealthStatus());
+        response.setConsecutiveFailures(provider.getConsecutiveFailures());
+        response.setLastCheckTime(provider.getLastCheckTime());
+        response.setLastErrorMsg(provider.getLastErrorMsg());
+        response.setSortOrder(provider.getSortOrder());
+        response.setRemark(provider.getRemark());
+        response.setCreatedAt(provider.getCreatedAt());
+
+        // 查询关联模型列表
+        List<ModelConfig> modelConfigs = modelConfigMapper.selectActiveByProviderId(id);
+        response.setModelConfigs(modelConfigs);
+
+        // 查询健康状态快照
+        ProviderHealth health = providerHealthMapper.selectByProviderId(id);
+        response.setProviderHealth(health);
+
+        // 查询 fallback 供应商编码
+        if (provider.getFallbackProviderId() != null) {
+            Provider fallback = providerMapper.selectById(provider.getFallbackProviderId());
+            if (fallback != null) {
+                response.setFallbackProviderCode(fallback.getCode());
+            }
+        }
+
+        return response;
+    }
+
+    // ==================== 列表（带缓存）====================
+
+    @Override
+    @Cacheable(
+            cacheNames = "provider-cache",
+            key = "'list:' + #request.current + ':' + #request.size + ':' + #request.providerType + ':' + #request.status + ':' + #request.keyword"
+    )
+    public PageResult<ProviderListResponse> list(ProviderListRequest request) {
+        LambdaQueryWrapper<Provider> wrapper = new LambdaQueryWrapper<>();
+
+        // 按协议类型筛选
+        if (StringUtils.isNotBlank(request.getProviderType())) {
+            wrapper.eq(Provider::getProviderType, request.getProviderType());
+        }
+
+        // 按人工状态筛选
+        if (StringUtils.isNotBlank(request.getStatus())) {
+            wrapper.eq(Provider::getStatus, request.getStatus());
+        }
+
+        // 按名称或编码模糊搜索
+        if (StringUtils.isNotBlank(request.getKeyword())) {
+            wrapper.and(w -> w.like(Provider::getName, request.getKeyword())
+                    .or()
+                    .like(Provider::getCode, request.getKeyword()));
+        }
+
+        wrapper.orderByAsc(Provider::getSortOrder).orderByDesc(Provider::getCreatedAt);
+
+        Page<Provider> page = providerMapper.selectPage(
+                new Page<>(request.getCurrent(), request.getSize()),
+                wrapper
+        );
+
+        List<ProviderListResponse> records = page.getRecords().stream()
+                .map(this::convertToListResponse)
+                .toList();
+
+        return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), records);
+    }
+
+    // ==================== 私有方法 ====================
+
+    private ProviderListResponse convertToListResponse(Provider provider) {
+        ProviderListResponse resp = new ProviderListResponse();
+        resp.setId(provider.getId());
+        resp.setCode(provider.getCode());
+        resp.setName(provider.getName());
+        resp.setProviderType(provider.getProviderType());
+        resp.setBaseUrl(provider.getBaseUrl());
+        resp.setAuthType(provider.getAuthType());
+        resp.setStatus(provider.getStatus());
+        resp.setHealthStatus(provider.getHealthStatus());
+        resp.setConsecutiveFailures(provider.getConsecutiveFailures());
+        resp.setLastCheckTime(provider.getLastCheckTime());
+        resp.setSortOrder(provider.getSortOrder());
+        resp.setCreatedAt(provider.getCreatedAt());
+        return resp;
+    }
+
+    /**
+     * API 密钥掩码：保留前 6 位和后 4 位，中间用 **** 替换
+     */
+    private String maskApiKey(String apiKey) {
+        if (StringUtils.isBlank(apiKey) || apiKey.length() < 12) {
+            return apiKey;
+        }
+        return apiKey.substring(0, 6) + "****" + apiKey.substring(apiKey.length() - 4);
+    }
+}
