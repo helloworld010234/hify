@@ -10,7 +10,6 @@ export interface Agent {
   maxTokens?: number
   maxContextTurns?: number
   enabled?: number
-  knowledgeIds?: number[]
   toolIds?: number[]
 }
 
@@ -18,11 +17,10 @@ export interface AgentListItem {
   id: number
   name: string
   description: string
-  modelConfigId: number
   modelName: string
-  enabled: number
-  knowledgeCount: number
   toolCount: number
+  temperature: number
+  enabled: number
   createdAt: string
 }
 
@@ -32,6 +30,22 @@ export interface AgentDetail extends Agent {
   toolIds: number[]
   createdAt: string
   updatedAt: string
+}
+
+export interface ModelGroup {
+  providerId: number
+  providerName: string
+  models: {
+    id: number
+    modelCode: string
+    modelName: string
+  }[]
+}
+
+export interface ToolOption {
+  id: number
+  name: string
+  description: string
 }
 
 export interface PageData<T> {
@@ -71,4 +85,14 @@ export function getAgentDetail(id: number) {
 /** 克隆 Agent */
 export function cloneAgent(id: number) {
   return post<number>(`/v1/agents/${id}/clone`)
+}
+
+/** 获取可用模型（按供应商分组） */
+export function getModelGroups() {
+  return get<ModelGroup[]>('/v1/agent-meta/models')
+}
+
+/** 获取可用工具列表 */
+export function getTools() {
+  return get<ToolOption[]>('/v1/agent-meta/tools')
 }

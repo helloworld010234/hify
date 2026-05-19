@@ -11,6 +11,7 @@ import com.hify.modules.agent.domain.service.AgentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,9 +34,9 @@ public class AgentController {
      * 创建 Agent
      */
     @PostMapping
-    public Result<Long> create(@Valid @RequestBody AgentCreateRequest request) {
-        Long id = agentService.create(request);
-        return Result.ok(id);
+    public Result<AgentDetailResponse> create(@Valid @RequestBody AgentCreateRequest request) {
+        AgentDetailResponse detail = agentService.create(request);
+        return Result.ok(detail);
     }
 
     /**
@@ -50,7 +51,7 @@ public class AgentController {
     /**
      * 获取 Agent 详情
      */
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     public Result<AgentDetailResponse> getById(@PathVariable Long id) {
         AgentDetailResponse detail = agentService.getById(id);
         return Result.ok(detail);
@@ -59,7 +60,7 @@ public class AgentController {
     /**
      * 更新 Agent
      */
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     public Result<Void> update(@PathVariable Long id,
                                @Valid @RequestBody AgentUpdateRequest request) {
         agentService.update(id, request);
@@ -69,7 +70,7 @@ public class AgentController {
     /**
      * 删除 Agent（逻辑删除）
      */
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     public Result<Void> delete(@PathVariable Long id) {
         agentService.delete(id);
         return Result.ok();
@@ -78,9 +79,10 @@ public class AgentController {
     /**
      * 克隆 Agent
      */
-    @PostMapping("/{id}/clone")
+    @PostMapping("/{id:[0-9]+}/clone")
     public Result<Long> clone(@PathVariable Long id) {
         Long newId = agentService.clone(id);
         return Result.ok(newId);
     }
+
 }

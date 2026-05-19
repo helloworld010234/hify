@@ -6,6 +6,10 @@ import com.hify.modules.agent.api.dto.request.AgentListRequest;
 import com.hify.modules.agent.api.dto.request.AgentUpdateRequest;
 import com.hify.modules.agent.api.dto.response.AgentDetailResponse;
 import com.hify.modules.agent.api.dto.response.AgentListResponse;
+import com.hify.modules.agent.api.dto.response.ModelGroupResponse;
+import com.hify.modules.agent.api.dto.response.ToolOption;
+
+import java.util.List;
 
 /**
  * Agent 管理 Service 接口
@@ -15,7 +19,7 @@ public interface AgentService {
     /**
      * 创建 Agent
      */
-    Long create(AgentCreateRequest request);
+    AgentDetailResponse create(AgentCreateRequest request);
 
     /**
      * 更新 Agent
@@ -41,4 +45,14 @@ public interface AgentService {
      * 克隆 Agent
      */
     Long clone(Long id);
+
+    /**
+     * 获取所有可用模型（按供应商分组）
+     */
+    List<ModelGroupResponse> listModelGroups();
+
+    /**
+     * 获取所有可用工具（用于前端多选绑定）
+     */
+    List<ToolOption> listTools();
 }

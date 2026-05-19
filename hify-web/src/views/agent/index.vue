@@ -19,6 +19,10 @@
         />
       </template>
 
+      <template #temperature="{ row }">
+        <span>{{ row.temperature?.toFixed?.(2) ?? row.temperature }}</span>
+      </template>
+
       <template #enabled="{ row }">
         <el-tag :type="row.enabled === 1 ? 'success' : 'info'" size="small">
           {{ row.enabled === 1 ? '启用' : '禁用' }}
@@ -35,56 +39,100 @@
     <HifyFormDialog
       ref="dialogRef"
       title="Agent"
-      width="640px"
+      width="680px"
       :rules="formRules"
       @submit="handleSubmit"
     >
       <template #default="{ form, isEdit }">
-        <el-form-item label="名称" prop="name">
-          <el-input v-model="form.name" placeholder="如 代码助手" maxlength="100" show-word-limit />
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="form.description" placeholder="简短描述该 Agent 的用途" maxlength="500" show-word-limit />
-        </el-form-item>
-        <el-form-item label="系统提示词" prop="systemPrompt">
-          <el-input
-            v-model="form.systemPrompt"
-            type="textarea"
-            :rows="4"
-            placeholder="输入系统提示词（System Prompt），定义 Agent 的角色和行为"
-          />
-        </el-form-item>
-        <el-form-item label="模型配置" prop="modelConfigId">
-          <el-select v-model="form.modelConfigId" placeholder="选择模型" style="width: 100%" :disabled="isEdit && false">
-            <el-option
-              v-for="opt in modelOptions"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="温度" prop="temperature">
-          <div class="slider-row">
-            <el-slider v-model="form.temperature" :min="0" :max="1" :step="0.01" style="flex: 1" />
-            <span class="slider-value">{{ form.temperature }}</span>
-          </div>
-        </el-form-item>
-        <el-form-item label="最大 Token" prop="maxTokens">
-          <el-input-number v-model="form.maxTokens" :min="1" :max="32768" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="上下文轮数" prop="maxContextTurns">
-          <el-input-number v-model="form.maxContextTurns" :min="1" :max="100" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="状态" prop="enabled">
-          <el-switch
-            v-model="form.enabled"
-            :active-value="1"
-            :inactive-value="0"
-            active-text="启用"
-            inactive-text="禁用"
-          />
-        </el-form-item>
+        <el-tabs v-model="activeTab" class="agent-tabs">
+          <el-tab-pane label="基础配置" name="basic">
+            <el-form-item label="名称" prop="name">
+              <el-input v-model="form.name" placeholder="如 代码助手" maxlength="100" show-word-limit />
+            </el-form-item>
+            <el-form-item label="描述" prop="description">
+              <el-input
+                v-model="form.description"
+                type="textarea"
+                :rows="2"
+                placeholder="简短描述该 Agent 的用途"
+                maxlength="500"
+                show-word-limit
+              />
+            </el-form-item>
+            <el-form-item label="模型配置" prop="modelConfigId">
+              <el-select v-model="form.modelConfigId" placeholder="选择模型" style="width: 100%">
+                <el-option-group
+                  v-for="group in modelGroups"
+                  :key="group.providerId"
+                  :label="group.providerName"
+                >
+                  <el-option
+                    v-for="model in group.models"
+                    :key="model.id"
+                    :label="model.modelName"
+                    :value="model.id"
+                  />
+                </el-option-group>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="System Prompt" prop="systemPrompt">
+              <el-input
+                v-model="form.systemPrompt"
+                type="textarea"
+                :rows="6"
+                placeholder="输入系统提示词（System Prompt），定义 Agent 的角色和行为"
+              />
+            </el-form-item>
+            <el-form-item label="温度" prop="temperature">
+              <div class="slider-row">
+                <el-slider
+                  v-model="form.temperature"
+                  :min="0"
+                  :max="1"
+                  :step="0.1"
+                  show-stops
+                  style="flex: 1"
+                />
+                <span class="slider-value">{{ form.temperature }}</span>
+              </div>
+            </el-form-item>
+            <el-form-item label="最大 Token" prop="maxTokens">
+              <el-input-number v-model="form.maxTokens" :min="1" :max="32768" style="width: 100%" />
+            </el-form-item>
+            <el-form-item label="上下文轮数" prop="maxContextTurns">
+              <el-input-number v-model="form.maxContextTurns" :min="1" :max="100" style="width: 100%" />
+            </el-form-item>
+            <el-form-item label="状态" prop="enabled">
+              <el-switch
+                v-model="form.enabled"
+                :active-value="1"
+                :inactive-value="0"
+                active-text="启用"
+                inactive-text="禁用"
+              />
+            </el-form-item>
+          </el-tab-pane>
+
+          <el-tab-pane label="工具绑定" name="tools">
+            <div class="tool-bind-area">
+              <p class="tool-hint">选择该 Agent 可以调用的 MCP 工具（多选）</p>
+              <el-checkbox-group v-model="form.toolIds">
+                <el-checkbox
+                  v-for="tool in toolOptions"
+                  :key="tool.id"
+                  :label="tool.id"
+                  class="tool-checkbox"
+                >
+                  <div class="tool-label">
+                    <span class="tool-name">{{ tool.name }}</span>
+                    <span class="tool-desc">{{ tool.description }}</span>
+                  </div>
+                </el-checkbox>
+              </el-checkbox-group>
+              <el-empty v-if="!toolOptions.length" description="暂无可用工具" :image-size="60" />
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </template>
     </HifyFormDialog>
   </div>
@@ -103,22 +151,29 @@ import {
   deleteAgent,
   cloneAgent,
   getAgentDetail,
-  type AgentListItem
+  getModelGroups,
+  getTools,
+  type AgentListItem,
+  type ModelGroup,
+  type ToolOption
 } from '@/api/agent'
-import { getProviderList, getProviderDetail } from '@/api/provider'
 
 const tableRef = ref<InstanceType<typeof HifyTable>>()
 const dialogRef = ref<InstanceType<typeof HifyFormDialog>>()
 const searchKey = ref('')
+const activeTab = ref('basic')
 
-const modelOptions = ref<{ label: string; value: number }[]>([])
+const modelGroups = ref<ModelGroup[]>([])
+const toolOptions = ref<ToolOption[]>([])
 
 const columns = [
   { prop: 'name', label: '名称', minWidth: 160 },
-  { prop: 'description', label: '描述', minWidth: 200 },
   { prop: 'modelName', label: '模型', width: 160 },
-  { prop: 'enabled', label: '状态', width: 90, slot: 'enabled' },
-  { prop: 'action', label: '操作', width: 200, slot: 'action' }
+  { prop: 'toolCount', label: '工具数', width: 80 },
+  { prop: 'temperature', label: '温度', width: 90, slot: 'temperature' },
+  { prop: 'enabled', label: '状态', width: 80, slot: 'enabled' },
+  { prop: 'createdAt', label: '创建时间', width: 170 },
+  { prop: 'action', label: '操作', width: 220, slot: 'action' }
 ]
 
 const formRules = {
@@ -129,28 +184,14 @@ const formRules = {
   maxContextTurns: [{ required: true, message: '请设置上下文轮数', trigger: 'change', type: 'number' }]
 }
 
-/** 加载所有可用模型选项 */
-const loadModelOptions = async () => {
+/** 加载模型分组和工具选项 */
+const loadMetaData = async () => {
   try {
-    const providerRes = await getProviderList({ page: 1, size: 100 })
-    if (providerRes.code !== 200) return
-    const providers = providerRes.data || []
-    const opts: { label: string; value: number }[] = []
-    for (const p of providers) {
-      const detail = await getProviderDetail(p.id)
-      const models = detail.modelConfigs || []
-      for (const m of models) {
-        if (m.status === 'active') {
-          opts.push({
-            label: `${p.name} / ${m.modelName || m.modelCode}`,
-            value: m.id
-          })
-        }
-      }
-    }
-    modelOptions.value = opts
+    const [modelRes, toolRes] = await Promise.all([getModelGroups(), getTools()])
+    modelGroups.value = modelRes || []
+    toolOptions.value = toolRes || []
   } catch (e) {
-    // 静默失败，模型选择框显示为空
+    // 静默失败
   }
 }
 
@@ -162,19 +203,22 @@ const fetchAgentList = (params: { page: number; size: number }) => {
 }
 
 const handleAdd = () => {
+  activeTab.value = 'basic'
   dialogRef.value?.open({
     description: '',
     systemPrompt: '',
-    temperature: 0.70,
+    temperature: 0.7,
     maxTokens: 2048,
     maxContextTurns: 10,
-    enabled: 1
+    enabled: 1,
+    toolIds: []
   })
 }
 
 const handleEdit = async (row: AgentListItem) => {
   try {
     const detail = await getAgentDetail(row.id)
+    activeTab.value = 'basic'
     dialogRef.value?.open({
       id: detail.id,
       name: detail.name,
@@ -184,7 +228,8 @@ const handleEdit = async (row: AgentListItem) => {
       temperature: detail.temperature,
       maxTokens: detail.maxTokens,
       maxContextTurns: detail.maxContextTurns,
-      enabled: detail.enabled
+      enabled: detail.enabled,
+      toolIds: detail.toolIds || []
     })
   } catch (e: any) {
     // request interceptor 已显示错误
@@ -226,7 +271,7 @@ const handleClone = useConfirm(
 )
 
 onMounted(() => {
-  loadModelOptions()
+  loadMetaData()
 })
 </script>
 
@@ -247,6 +292,10 @@ onMounted(() => {
   margin: 0;
 }
 
+.agent-tabs :deep(.el-tabs__content) {
+  padding-top: var(--space-4);
+}
+
 .slider-row {
   display: flex;
   align-items: center;
@@ -257,6 +306,38 @@ onMounted(() => {
   min-width: 40px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.tool-bind-area {
+  padding: var(--space-2) 0;
+}
+.tool-hint {
+  margin: 0 0 var(--space-4);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+.tool-checkbox {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--space-3);
+  height: auto;
+}
+.tool-checkbox :deep(.el-checkbox__label) {
+  white-space: normal;
+  line-height: 1.5;
+}
+.tool-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tool-name {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+.tool-desc {
+  font-size: 12px;
   color: var(--color-text-secondary);
 }
 

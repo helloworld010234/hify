@@ -1,11 +1,14 @@
 package com.hify.modules.provider.api;
 
 import com.hify.common.web.PageResult;
+import com.hify.modules.provider.api.dto.ModelDto;
 import com.hify.modules.provider.api.dto.request.ProviderCreateRequest;
 import com.hify.modules.provider.api.dto.request.ProviderListRequest;
 import com.hify.modules.provider.api.dto.request.ProviderUpdateRequest;
 import com.hify.modules.provider.api.dto.response.ProviderDetailResponse;
 import com.hify.modules.provider.api.dto.response.ProviderListResponse;
+
+import java.util.List;
 
 /**
  * Provider 管理 Service 接口
@@ -60,4 +63,22 @@ public interface ProviderService {
      * @return 测试结果（success、latencyMs、modelCount、errorMessage）
      */
     com.hify.modules.provider.api.dto.response.ConnectionTestResult testConnection(Long id);
+
+    /**
+     * 根据模型配置 ID 查询模型名称
+     *
+     * @param modelConfigId 模型配置 ID（t_model.id）
+     * @return 模型名称，不存在或已删除返回 null
+     */
+    String getModelNameById(Long modelConfigId);
+
+    /**
+     * 查询所有可用供应商（不分页，用于下拉选择等辅助场景）
+     */
+    List<ProviderListResponse> listAllActiveProviders();
+
+    /**
+     * 查询所有可用模型（不分页，用于下拉选择等辅助场景）
+     */
+    List<ModelDto> listAllActiveModels();
 }

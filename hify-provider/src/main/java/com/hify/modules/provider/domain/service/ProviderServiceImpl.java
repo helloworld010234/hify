@@ -7,6 +7,7 @@ import com.hify.common.exception.BizException;
 import com.hify.common.exception.ErrorCode;
 import com.hify.common.web.PageResult;
 import com.hify.modules.provider.api.ProviderService;
+import com.hify.modules.provider.api.dto.ModelDto;
 import com.hify.modules.provider.api.dto.request.ProviderCreateRequest;
 import com.hify.modules.provider.api.dto.request.ProviderListRequest;
 import com.hify.modules.provider.api.dto.request.ProviderUpdateRequest;
@@ -420,5 +421,66 @@ public class ProviderServiceImpl implements ProviderService {
             return "none";
         }
         return "bearer";
+    }
+
+    @Override
+    public List<ProviderListResponse> listAllActiveProviders() {
+        List<Provider> providers = providerMapper.selectActiveList();
+        return providers.stream().map(this::convertToBasicListResponse).toList();
+    }
+
+    private ProviderListResponse convertToBasicListResponse(Provider provider) {
+        ProviderListResponse resp = new ProviderListResponse();
+        resp.setId(provider.getId());
+        resp.setCode(provider.getCode());
+        resp.setName(provider.getName());
+        resp.setProviderType(provider.getProviderType());
+        resp.setBaseUrl(provider.getBaseUrl());
+        resp.setAuthType(provider.getAuthType());
+        resp.setStatus(provider.getStatus());
+        resp.setHealthStatus(provider.getHealthStatus());
+        resp.setConsecutiveFailures(provider.getConsecutiveFailures());
+        resp.setLastCheckTime(provider.getLastCheckTime());
+        resp.setSortOrder(provider.getSortOrder());
+        resp.setCreatedAt(provider.getCreatedAt());
+        return resp;
+    }
+
+    @Override
+    public List<ModelDto> listAllActiveModels() {
+        List<ModelConfig> models = modelConfigMapper.selectAllActive();
+        return models.stream().map(this::convertToModelDto).toList();
+    }
+
+    private ModelDto convertToModelDto(ModelConfig model) {
+        ModelDto dto = new ModelDto();
+        dto.setId(model.getId());
+        dto.setProviderId(model.getProviderId());
+        dto.setModelCode(model.getModelCode());
+        dto.setModelName(model.getModelName());
+        dto.setModelType(model.getModelType());
+        dto.setMaxContextTokens(model.getMaxContextTokens());
+        dto.setMaxOutputTokens(model.getMaxOutputTokens());
+        dto.setSupportsStreaming(model.getSupportsStreaming() != null && model.getSupportsStreaming() == 1);
+        dto.setSupportsToolCalls(model.getSupportsToolCalls() != null && model.getSupportsToolCalls() == 1);
+        dto.setSupportsVision(model.getSupportsVision() != null && model.getSupportsVision() == 1);
+        dto.setSupportsJsonMode(model.getSupportsJsonMode() != null && model.getSupportsJsonMode() == 1);
+        dto.setStatus(model.getStatus());
+        dto.setIsDefault(model.getIsDefault() != null && model.getIsDefault() == 1);
+        dto.setSortOrder(model.getSortOrder());
+        dto.setCreatedAt(model.getCreatedAt());
+        return dto;
+    }
+
+    @Override
+    public String getModelNameById(Long modelConfigId) {
+        if (modelConfigId == null) {
+            return null;
+        }
+        ModelConfig model = modelConfigMapper.selectById(modelConfigId);
+        if (model == null || model.getDeleted() != null && model.getDeleted() == 1) {
+            return null;
+        }
+        return model.getModelName();
     }
 }

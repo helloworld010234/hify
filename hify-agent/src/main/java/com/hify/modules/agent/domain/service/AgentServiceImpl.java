@@ -10,24 +10,28 @@ import com.hify.modules.agent.api.dto.request.AgentListRequest;
 import com.hify.modules.agent.api.dto.request.AgentUpdateRequest;
 import com.hify.modules.agent.api.dto.response.AgentDetailResponse;
 import com.hify.modules.agent.api.dto.response.AgentListResponse;
+import com.hify.modules.agent.api.dto.response.ModelGroupResponse;
+import com.hify.modules.agent.api.dto.response.ToolOption;
 import com.hify.modules.agent.infra.entity.Agent;
 import com.hify.modules.agent.infra.entity.AgentKnowledgeRel;
 import com.hify.modules.agent.infra.entity.AgentToolRel;
 import com.hify.modules.agent.infra.mapper.AgentKnowledgeRelMapper;
 import com.hify.modules.agent.infra.mapper.AgentMapper;
 import com.hify.modules.agent.infra.mapper.AgentToolRelMapper;
-import com.hify.modules.provider.infra.mapper.ModelMapper;
-import com.hify.modules.provider.infra.po.ModelPo;
+import com.hify.modules.provider.api.ProviderService;
+import com.hify.modules.provider.api.dto.ModelDto;
+import com.hify.modules.provider.api.dto.response.ProviderListResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -38,16 +42,24 @@ public class AgentServiceImpl implements AgentService {
     private final AgentMapper agentMapper;
     private final AgentKnowledgeRelMapper knowledgeRelMapper;
     private final AgentToolRelMapper toolRelMapper;
-    private final ModelMapper modelMapper;
+    private final ProviderService providerService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long create(AgentCreateRequest request) {
-        // 校验名称唯一性
+    @CacheEvict(cacheNames = "agent-cache", allEntries = true)
+    public AgentDetailResponse create(AgentCreateRequest request) {
+        // 第一步：校验 name 唯一性
         if (agentMapper.selectByName(request.getName()) != null) {
             throw new BizException(ErrorCode.PARAM_ERROR, "Agent 名称已存在：" + request.getName());
         }
 
+        // 第二步：跨模块校验 modelConfigId（走 ProviderService 接口，不直接查 Mapper）
+        String modelName = providerService.getModelNameById(request.getModelConfigId());
+        if (modelName == null) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "模型配置不存在：" + request.getModelConfigId());
+        }
+
+        // 第三步：在 @Transactional 事务中 INSERT agent + 批量 INSERT agent_tool
         Agent agent = new Agent();
         agent.setName(request.getName());
         agent.setDescription(request.getDescription());
@@ -60,15 +72,20 @@ public class AgentServiceImpl implements AgentService {
 
         agentMapper.insert(agent);
 
-        // 保存关联
+        // 批量插入关联（knowledge + tool）
         saveRelations(agent.getId(), request.getKnowledgeIds(), request.getToolIds());
 
         log.info("Agent created: id={}, name={}", agent.getId(), agent.getName());
-        return agent.getId();
+
+        // 返回 AgentDetailResponse（组装关联数据）
+        List<Long> knowledgeIds = knowledgeRelMapper.selectKnowledgeIdsByAgentId(agent.getId());
+        List<Long> toolIds = toolRelMapper.selectToolIdsByAgentId(agent.getId());
+        return AgentDetailResponse.from(agent, modelName, knowledgeIds, toolIds);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "agent-cache", allEntries = true)
     public void update(Long id, AgentUpdateRequest request) {
         Agent agent = agentMapper.selectById(id);
         if (agent == null || agent.getDeleted() != null && agent.getDeleted() == 1) {
@@ -79,6 +96,12 @@ public class AgentServiceImpl implements AgentService {
         Agent exist = agentMapper.selectByName(request.getName());
         if (exist != null && !exist.getId().equals(id)) {
             throw new BizException(ErrorCode.PARAM_ERROR, "Agent 名称已存在：" + request.getName());
+        }
+
+        // 跨模块校验 modelConfigId
+        String modelName = providerService.getModelNameById(request.getModelConfigId());
+        if (modelName == null) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "模型配置不存在：" + request.getModelConfigId());
         }
 
         agent.setName(request.getName());
@@ -102,6 +125,7 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "agent-cache", allEntries = true)
     public void delete(Long id) {
         Agent agent = agentMapper.selectById(id);
         if (agent == null || agent.getDeleted() != null && agent.getDeleted() == 1) {
@@ -122,7 +146,7 @@ public class AgentServiceImpl implements AgentService {
             throw new BizException(ErrorCode.NOT_FOUND, "Agent 不存在：" + id);
         }
 
-        String modelName = getModelName(agent.getModelConfigId());
+        String modelName = providerService.getModelNameById(agent.getModelConfigId());
         List<Long> knowledgeIds = knowledgeRelMapper.selectKnowledgeIdsByAgentId(id);
         List<Long> toolIds = toolRelMapper.selectToolIdsByAgentId(id);
 
@@ -146,18 +170,33 @@ public class AgentServiceImpl implements AgentService {
             return PageResult.of(0, request.getCurrent(), request.getSize(), Collections.emptyList());
         }
 
-        // 批量查询模型名称
-        Set<Long> modelIds = records.stream()
+        // 跨模块查询模型名称（走 ProviderService 接口）
+        List<Long> modelConfigIds = records.stream()
                 .map(Agent::getModelConfigId)
                 .filter(mid -> mid != null)
-                .collect(Collectors.toSet());
-        Map<Long, String> modelNameMap = modelIds.isEmpty() ? Collections.emptyMap() :
-                modelMapper.selectBatchIds(modelIds).stream()
-                        .collect(Collectors.toMap(ModelPo::getId, ModelPo::getModelName, (a, b) -> a));
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, String> modelNameMap = modelConfigIds.stream()
+                .collect(Collectors.toMap(
+                        id -> id,
+                        id -> providerService.getModelNameById(id),
+                        (a, b) -> a
+                ));
 
         // 批量查询关联数量
         List<Long> agentIds = records.stream().map(Agent::getId).collect(Collectors.toList());
-        // TODO: 批量查询 knowledge/tool 数量，目前逐条查询
+        Map<Long, Long> knowledgeCountMap = knowledgeRelMapper.countByAgentIds(agentIds).stream()
+                .collect(Collectors.toMap(
+                        m -> Long.valueOf(m.get("agentId").toString()),
+                        m -> Long.valueOf(m.get("cnt").toString()),
+                        (a, b) -> a
+                ));
+        Map<Long, Long> toolCountMap = toolRelMapper.countByAgentIds(agentIds).stream()
+                .collect(Collectors.toMap(
+                        m -> Long.valueOf(m.get("agentId").toString()),
+                        m -> Long.valueOf(m.get("cnt").toString()),
+                        (a, b) -> a
+                ));
 
         List<AgentListResponse> list = records.stream().map(agent -> {
             AgentListResponse resp = new AgentListResponse();
@@ -168,9 +207,8 @@ public class AgentServiceImpl implements AgentService {
             resp.setModelName(modelNameMap.getOrDefault(agent.getModelConfigId(), ""));
             resp.setEnabled(agent.getEnabled());
             resp.setCreatedAt(agent.getCreatedAt());
-            // 关联数量暂置 0，后续批量优化
-            resp.setKnowledgeCount(0);
-            resp.setToolCount(0);
+            resp.setKnowledgeCount(knowledgeCountMap.getOrDefault(agent.getId(), 0L).intValue());
+            resp.setToolCount(toolCountMap.getOrDefault(agent.getId(), 0L).intValue());
             return resp;
         }).collect(Collectors.toList());
 
@@ -179,6 +217,7 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "agent-cache", allEntries = true)
     public Long clone(Long id) {
         Agent source = agentMapper.selectById(id);
         if (source == null || source.getDeleted() != null && source.getDeleted() == 1) {
@@ -206,32 +245,71 @@ public class AgentServiceImpl implements AgentService {
         return agent.getId();
     }
 
+    @Override
+    public List<ModelGroupResponse> listModelGroups() {
+        // 跨模块查询：走 ProviderService 接口，不直接查 Mapper
+        List<ProviderListResponse> providers = providerService.listAllActiveProviders();
+        List<ModelDto> models = providerService.listAllActiveModels();
+
+        Map<Long, String> providerNameMap = providers.stream()
+                .collect(Collectors.toMap(ProviderListResponse::getId, ProviderListResponse::getName));
+
+        Map<Long, List<ModelDto>> modelMap = models.stream()
+                .collect(Collectors.groupingBy(ModelDto::getProviderId));
+
+        List<ModelGroupResponse> groups = new ArrayList<>();
+        for (ProviderListResponse provider : providers) {
+            List<ModelDto> providerModels = modelMap.getOrDefault(provider.getId(), Collections.emptyList());
+            if (providerModels.isEmpty()) continue;
+
+            ModelGroupResponse group = new ModelGroupResponse();
+            group.setProviderId(provider.getId());
+            group.setProviderName(provider.getName());
+            group.setModels(providerModels.stream().map(m -> {
+                ModelGroupResponse.ModelOption opt = new ModelGroupResponse.ModelOption();
+                opt.setId(m.getId());
+                opt.setModelCode(m.getModelCode());
+                opt.setModelName(m.getModelName());
+                return opt;
+            }).collect(Collectors.toList()));
+            groups.add(group);
+        }
+        return groups;
+    }
+
+    @Override
+    public List<ToolOption> listTools() {
+        // TODO: MCP 模块尚未实现，先返回 mock 数据，后续替换为真实查询
+        List<ToolOption> tools = new ArrayList<>();
+        ToolOption t1 = new ToolOption();
+        t1.setId(1L);
+        t1.setName("web_search");
+        t1.setDescription("网络搜索：允许 Agent 搜索互联网获取实时信息");
+        tools.add(t1);
+
+        ToolOption t2 = new ToolOption();
+        t2.setId(2L);
+        t2.setName("code_executor");
+        t2.setDescription("代码执行：允许 Agent 执行 Python 代码片段");
+        tools.add(t2);
+
+        ToolOption t3 = new ToolOption();
+        t3.setId(3L);
+        t3.setName("file_reader");
+        t3.setDescription("文件读取：允许 Agent 读取本地文件内容");
+        tools.add(t3);
+
+        return tools;
+    }
+
     // ---------- 私有方法 ----------
 
     private void saveRelations(Long agentId, List<Long> knowledgeIds, List<Long> toolIds) {
         if (!CollectionUtils.isEmpty(knowledgeIds)) {
-            for (Long knowledgeId : knowledgeIds) {
-                AgentKnowledgeRel rel = new AgentKnowledgeRel();
-                rel.setAgentId(agentId);
-                rel.setKnowledgeId(knowledgeId);
-                knowledgeRelMapper.insert(rel);
-            }
+            knowledgeRelMapper.batchInsert(agentId, knowledgeIds);
         }
         if (!CollectionUtils.isEmpty(toolIds)) {
-            for (Long toolId : toolIds) {
-                AgentToolRel rel = new AgentToolRel();
-                rel.setAgentId(agentId);
-                rel.setToolId(toolId);
-                toolRelMapper.insert(rel);
-            }
+            toolRelMapper.batchInsert(agentId, toolIds);
         }
-    }
-
-    private String getModelName(Long modelConfigId) {
-        if (modelConfigId == null) {
-            return "";
-        }
-        ModelPo model = modelMapper.selectById(modelConfigId);
-        return model != null ? model.getModelName() : "";
     }
 }
