@@ -43,9 +43,8 @@ public class AgentController {
      * 分页查询 Agent 列表
      */
     @GetMapping
-    public Result<PageResult<AgentListResponse>> list(AgentListRequest request) {
-        PageResult<AgentListResponse> pageResult = agentService.list(request);
-        return Result.ok(pageResult);
+    public PageResult<AgentListResponse> list(AgentListRequest request) {
+        return agentService.list(request);
     }
 
     /**

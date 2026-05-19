@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS t_provider (
     id                  BIGINT          NOT NULL AUTO_INCREMENT COMMENT '主键',
     code                VARCHAR(32)     NOT NULL COMMENT '供应商唯一编码，如 openai/deepseek/anthropic/azure/ollama',
     name                VARCHAR(64)     NOT NULL COMMENT '显示名称',
-    provider_type       VARCHAR(16)     NOT NULL COMMENT '协议类型：openai_compatible/anthropic/azure_openai/ollama',
+    provider_type       VARCHAR(32)     NOT NULL COMMENT '协议类型：openai_compatible/anthropic/azure_openai/ollama',
     base_url            VARCHAR(255)    NOT NULL COMMENT 'API Base URL，如 https://api.openai.com',
 
     -- 鉴权统一存储（核心设计）

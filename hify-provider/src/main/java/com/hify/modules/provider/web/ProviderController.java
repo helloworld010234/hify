@@ -43,9 +43,8 @@ public class ProviderController {
      * 分页查询供应商列表
      */
     @GetMapping
-    public Result<PageResult<ProviderListResponse>> list(ProviderListRequest request) {
-        PageResult<ProviderListResponse> pageResult = providerService.list(request);
-        return Result.ok(pageResult);
+    public PageResult<ProviderListResponse> list(ProviderListRequest request) {
+        return providerService.list(request);
     }
 
     /**

@@ -31,7 +31,7 @@ public interface AgentToolRelMapper extends BaseMapper<AgentToolRel> {
     /**
      * 批量统计各 Agent 的工具数量
      */
-    @Select("<script>SELECT agent_id as agentId, COUNT(*) as cnt FROM t_agent_tool WHERE agent_id IN <foreach collection='agentIds' item='id' open='(' separator=',' close=')'>#{id}</foreach> GROUP BY agent_id</script>")
+    @Select("<script>SELECT agent_id as `agentId`, COUNT(*) as `cnt` FROM t_agent_tool WHERE agent_id IN <foreach collection='agentIds' item='id' open='(' separator=',' close=')'>#{id}</foreach> GROUP BY agent_id</script>")
     List<Map<String, Object>> countByAgentIds(@Param("agentIds") List<Long> agentIds);
 
     /**

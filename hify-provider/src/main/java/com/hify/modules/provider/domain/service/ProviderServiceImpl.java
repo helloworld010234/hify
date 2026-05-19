@@ -61,9 +61,10 @@ public class ProviderServiceImpl implements ProviderService {
             request.setAuthType(inferAuthType(request.getProviderType()));
         }
 
-        // 1. 校验编码唯一性
-        if (providerMapper.selectByCode(request.getCode()) != null) {
-            throw new BizException(ErrorCode.PARAM_ERROR, "供应商编码已存在: " + request.getCode());
+        // 1. 校验编码唯一性（先统一转小写再查，与入库值保持一致）
+        String checkCode = request.getCode() == null ? null : request.getCode().trim().toLowerCase();
+        if (providerMapper.selectByCode(checkCode) != null) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "供应商编码已存在: " + checkCode);
         }
 
         // 2. 校验名称唯一性（排除已删除）
@@ -479,6 +480,11 @@ public class ProviderServiceImpl implements ProviderService {
         }
         ModelConfig model = modelConfigMapper.selectById(modelConfigId);
         if (model == null || model.getDeleted() != null && model.getDeleted() == 1) {
+            return null;
+        }
+        // 检查所属 Provider 是否被删除
+        Provider provider = providerMapper.selectById(model.getProviderId());
+        if (provider == null || provider.getDeleted() != null && provider.getDeleted() == 1) {
             return null;
         }
         return model.getModelName();

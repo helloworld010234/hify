@@ -176,27 +176,29 @@ public class AgentServiceImpl implements AgentService {
                 .filter(mid -> mid != null)
                 .distinct()
                 .collect(Collectors.toList());
-        Map<Long, String> modelNameMap = modelConfigIds.stream()
-                .collect(Collectors.toMap(
-                        id -> id,
-                        id -> providerService.getModelNameById(id),
-                        (a, b) -> a
-                ));
+        Map<Long, String> modelNameMap = new java.util.HashMap<>();
+        for (Long modelId : modelConfigIds) {
+            modelNameMap.put(modelId, providerService.getModelNameById(modelId));
+        }
 
         // 批量查询关联数量
         List<Long> agentIds = records.stream().map(Agent::getId).collect(Collectors.toList());
-        Map<Long, Long> knowledgeCountMap = knowledgeRelMapper.countByAgentIds(agentIds).stream()
-                .collect(Collectors.toMap(
-                        m -> Long.valueOf(m.get("agentId").toString()),
-                        m -> Long.valueOf(m.get("cnt").toString()),
-                        (a, b) -> a
-                ));
-        Map<Long, Long> toolCountMap = toolRelMapper.countByAgentIds(agentIds).stream()
-                .collect(Collectors.toMap(
-                        m -> Long.valueOf(m.get("agentId").toString()),
-                        m -> Long.valueOf(m.get("cnt").toString()),
-                        (a, b) -> a
-                ));
+        Map<Long, Long> knowledgeCountMap = new java.util.HashMap<>();
+        for (Map<String, Object> m : knowledgeRelMapper.countByAgentIds(agentIds)) {
+            Long aid = extractLongFromMap(m, "agentId");
+            Long cnt = extractLongFromMap(m, "cnt");
+            if (aid != null) {
+                knowledgeCountMap.put(aid, cnt);
+            }
+        }
+        Map<Long, Long> toolCountMap = new java.util.HashMap<>();
+        for (Map<String, Object> m : toolRelMapper.countByAgentIds(agentIds)) {
+            Long aid = extractLongFromMap(m, "agentId");
+            Long cnt = extractLongFromMap(m, "cnt");
+            if (aid != null) {
+                toolCountMap.put(aid, cnt);
+            }
+        }
 
         List<AgentListResponse> list = records.stream().map(agent -> {
             AgentListResponse resp = new AgentListResponse();
@@ -311,5 +313,25 @@ public class AgentServiceImpl implements AgentService {
         if (!CollectionUtils.isEmpty(toolIds)) {
             toolRelMapper.batchInsert(agentId, toolIds);
         }
+    }
+
+    /**
+     * 大小写不敏感地从 Map 中获取 Long 值（适配 H2 / MySQL 列名差异）
+     */
+    private static Long extractLongFromMap(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) {
+            value = map.get(key.toUpperCase());
+        }
+        if (value == null) {
+            value = map.get(key.toLowerCase());
+        }
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return Long.valueOf(value.toString());
     }
 }

@@ -31,7 +31,7 @@ public interface AgentKnowledgeRelMapper extends BaseMapper<AgentKnowledgeRel> {
     /**
      * 批量统计各 Agent 的知识库数量
      */
-    @Select("<script>SELECT agent_id as agentId, COUNT(*) as cnt FROM t_agent_knowledge_rel WHERE agent_id IN <foreach collection='agentIds' item='id' open='(' separator=',' close=')'>#{id}</foreach> GROUP BY agent_id</script>")
+    @Select("<script>SELECT agent_id as `agentId`, COUNT(*) as `cnt` FROM t_agent_knowledge_rel WHERE agent_id IN <foreach collection='agentIds' item='id' open='(' separator=',' close=')'>#{id}</foreach> GROUP BY agent_id</script>")
     List<Map<String, Object>> countByAgentIds(@Param("agentIds") List<Long> agentIds);
 
     /**
