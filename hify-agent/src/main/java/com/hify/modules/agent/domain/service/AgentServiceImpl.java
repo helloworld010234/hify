@@ -199,6 +199,14 @@ public class AgentServiceImpl implements AgentService {
                 toolCountMap.put(aid, cnt);
             }
         }
+        Map<Long, List<Long>> toolIdsMap = new java.util.HashMap<>();
+        for (Map<String, Object> m : toolRelMapper.selectToolIdsByAgentIds(agentIds)) {
+            Long aid = extractLongFromMap(m, "agentId");
+            Long tid = extractLongFromMap(m, "toolId");
+            if (aid != null && tid != null) {
+                toolIdsMap.computeIfAbsent(aid, k -> new ArrayList<>()).add(tid);
+            }
+        }
 
         List<AgentListResponse> list = records.stream().map(agent -> {
             AgentListResponse resp = new AgentListResponse();
@@ -207,10 +215,15 @@ public class AgentServiceImpl implements AgentService {
             resp.setDescription(agent.getDescription());
             resp.setModelConfigId(agent.getModelConfigId());
             resp.setModelName(modelNameMap.getOrDefault(agent.getModelConfigId(), ""));
+            resp.setSystemPrompt(agent.getSystemPrompt());
+            resp.setMaxContextTurns(agent.getMaxContextTurns());
+            resp.setMaxTokens(agent.getMaxTokens());
+            resp.setTemperature(agent.getTemperature());
             resp.setEnabled(agent.getEnabled());
             resp.setCreatedAt(agent.getCreatedAt());
             resp.setKnowledgeCount(knowledgeCountMap.getOrDefault(agent.getId(), 0L).intValue());
             resp.setToolCount(toolCountMap.getOrDefault(agent.getId(), 0L).intValue());
+            resp.setToolIds(toolIdsMap.getOrDefault(agent.getId(), Collections.emptyList()));
             return resp;
         }).collect(Collectors.toList());
 
@@ -277,6 +290,47 @@ public class AgentServiceImpl implements AgentService {
             groups.add(group);
         }
         return groups;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "agent-cache", allEntries = true)
+    public void updateMaxContextTurns(Long id, Integer maxContextTurns) {
+        Agent agent = agentMapper.selectById(id);
+        if (agent == null || agent.getDeleted() != null && agent.getDeleted() == 1) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Agent 不存在：" + id);
+        }
+        agent.setMaxContextTurns(maxContextTurns);
+        agentMapper.updateById(agent);
+        log.info("Agent maxContextTurns updated: id={}, maxContextTurns={}", id, maxContextTurns);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "agent-cache", allEntries = true)
+    public void updateTemperature(Long id, java.math.BigDecimal temperature) {
+        Agent agent = agentMapper.selectById(id);
+        if (agent == null || agent.getDeleted() != null && agent.getDeleted() == 1) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Agent 不存在：" + id);
+        }
+        agent.setTemperature(temperature);
+        agentMapper.updateById(agent);
+        log.info("Agent temperature updated: id={}, temperature={}", id, temperature);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(cacheNames = "agent-cache", allEntries = true)
+    public void updateToolIds(Long id, java.util.List<Long> toolIds) {
+        Agent agent = agentMapper.selectById(id);
+        if (agent == null || agent.getDeleted() != null && agent.getDeleted() == 1) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Agent 不存在：" + id);
+        }
+        toolRelMapper.deleteByAgentId(id);
+        if (!org.springframework.util.CollectionUtils.isEmpty(toolIds)) {
+            toolRelMapper.batchInsert(id, toolIds);
+        }
+        log.info("Agent tools updated: id={}, toolCount={}", id, toolIds == null ? 0 : toolIds.size());
     }
 
     @Override

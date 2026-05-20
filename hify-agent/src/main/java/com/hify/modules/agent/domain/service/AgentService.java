@@ -55,4 +55,19 @@ public interface AgentService {
      * 获取所有可用工具（用于前端多选绑定）
      */
     List<ToolOption> listTools();
+
+    /**
+     * 快捷修改 Agent 上下文轮数（列表页行内编辑）
+     */
+    void updateMaxContextTurns(Long id, Integer maxContextTurns);
+
+    /**
+     * 快捷修改 Agent 温度（列表页行内编辑）
+     */
+    void updateTemperature(Long id, java.math.BigDecimal temperature);
+
+    /**
+     * 快捷修改 Agent 工具绑定（列表页行内编辑）
+     */
+    void updateToolIds(Long id, java.util.List<Long> toolIds);
 }

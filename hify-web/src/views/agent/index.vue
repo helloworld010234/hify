@@ -19,8 +19,39 @@
         />
       </template>
 
-      <template #temperature="{ row }">
-        <span>{{ row.temperature?.toFixed?.(2) ?? row.temperature }}</span>
+      <template #temperature="scope">
+        <el-input-number
+          :model-value="scope.row.temperature"
+          :min="0"
+          :max="1"
+          :step="0.1"
+          :precision="2"
+          size="small"
+          style="width: 80px"
+          controls-position="right"
+          @change="handleTemperatureChange(scope.row, $event)"
+        />
+      </template>
+
+      <template #toolCount="scope">
+        <AgentToolSelect
+          :agent-id="scope.row.id"
+          :model-value="scope.row.toolIds || []"
+          :tool-options="toolOptions"
+          @refresh="tableRef?.refresh()"
+        />
+      </template>
+
+      <template #maxContextTurns="scope">
+        <el-input-number
+          :model-value="scope.row.maxContextTurns"
+          :min="1"
+          :max="100"
+          size="small"
+          style="width: 90px"
+          controls-position="right"
+          @change="handleMaxContextTurnsChange(scope.row, $event)"
+        />
       </template>
 
       <template #enabled="{ row }">
@@ -43,7 +74,7 @@
       :rules="formRules"
       @submit="handleSubmit"
     >
-      <template #default="{ form, isEdit }">
+      <template #default="{ form, isEdit: _isEdit }">
         <el-tabs v-model="activeTab" class="agent-tabs">
           <el-tab-pane label="基础配置" name="basic">
             <el-form-item label="名称" prop="name">
@@ -143,6 +174,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import HifyTable from '@/components/HifyTable.vue'
 import HifyFormDialog from '@/components/HifyFormDialog.vue'
+import AgentToolSelect from '@/components/AgentToolSelect.vue'
 import { useConfirm } from '@/composables/useConfirm'
 import {
   getAgentList,
@@ -153,6 +185,8 @@ import {
   getAgentDetail,
   getModelGroups,
   getTools,
+  updateMaxContextTurns,
+  updateTemperature,
   type AgentListItem,
   type ModelGroup,
   type ToolOption
@@ -169,8 +203,9 @@ const toolOptions = ref<ToolOption[]>([])
 const columns = [
   { prop: 'name', label: '名称', minWidth: 160 },
   { prop: 'modelName', label: '模型', width: 160 },
-  { prop: 'toolCount', label: '工具数', width: 80 },
-  { prop: 'temperature', label: '温度', width: 90, slot: 'temperature' },
+  { prop: 'toolCount', label: '工具数', width: 180, slot: 'toolCount' },
+  { prop: 'temperature', label: '温度', width: 100, slot: 'temperature' },
+  { prop: 'maxContextTurns', label: '上下文轮数', width: 120, slot: 'maxContextTurns' },
   { prop: 'enabled', label: '状态', width: 80, slot: 'enabled' },
   { prop: 'createdAt', label: '创建时间', width: 170 },
   { prop: 'action', label: '操作', width: 220, slot: 'action' }
@@ -267,8 +302,28 @@ const handleClone = useConfirm(
     ElMessage.success(`克隆成功，新 Agent ID: ${newId}`)
     tableRef.value?.refresh()
   },
-  { title: '克隆 Agent', message: `确认克隆 "${row.name}" 吗？克隆后的 Agent 默认禁用。` }
+  { title: '克隆 Agent', message: '确认克隆该 Agent 吗？克隆后的 Agent 默认禁用。' }
 )
+
+const handleMaxContextTurnsChange = async (row: AgentListItem, val: number | undefined) => {
+  if (val === undefined || val < 1) return
+  try {
+    await updateMaxContextTurns(row.id, val)
+    ElMessage.success('上下文轮数更新成功')
+  } catch (e) {
+    tableRef.value?.refresh()
+  }
+}
+
+const handleTemperatureChange = async (row: AgentListItem, val: number | undefined) => {
+  if (val === undefined || val < 0 || val > 1) return
+  try {
+    await updateTemperature(row.id, val)
+    ElMessage.success('温度更新成功')
+  } catch (e) {
+    tableRef.value?.refresh()
+  }
+}
 
 onMounted(() => {
   loadMetaData()

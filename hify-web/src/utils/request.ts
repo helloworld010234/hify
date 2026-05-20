@@ -37,4 +37,8 @@ export const del = <T = any>(url: string, params?: any): Promise<T> => {
   return request.delete(url, { params }) as Promise<T>
 }
 
+export const patch = <T = any>(url: string, data?: any): Promise<T> => {
+  return request.patch(url, data) as Promise<T>
+}
+
 export default request
