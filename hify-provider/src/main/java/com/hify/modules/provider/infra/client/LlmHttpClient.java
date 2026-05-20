@@ -4,11 +4,14 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * LLM HTTP 客户端封装
@@ -21,14 +24,12 @@ import java.util.concurrent.TimeUnit;
 public class LlmHttpClient {
 
     private final OkHttpClient client;
+    private final OkHttpClient streamClient;
 
-    public LlmHttpClient() {
-        this.client = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.SECONDS)
-                .writeTimeout(10, TimeUnit.SECONDS)
-                .connectionPool(new okhttp3.ConnectionPool(20, 5, TimeUnit.MINUTES))
-                .build();
+    public LlmHttpClient(OkHttpClient client,
+                         @Qualifier("streamOkHttpClient") OkHttpClient streamClient) {
+        this.client = client;
+        this.streamClient = streamClient;
     }
 
     /**
@@ -80,6 +81,45 @@ public class LlmHttpClient {
                 throw new IOException("HTTP " + response.code() + ": " + respBody);
             }
             return respBody;
+        }
+    }
+
+    /**
+     * 执行 POST 请求并流式消费响应（SSE）
+     *
+     * @param url     请求地址
+     * @param headers 请求头
+     * @param jsonBody JSON 请求体
+     * @param onLine  每读到一行 SSE 数据时的回调
+     * @throws IOException 网络或 HTTP 异常
+     */
+    public void postStream(String url, Map<String, String> headers, String jsonBody,
+                           Consumer<String> onLine) throws IOException {
+        okhttp3.RequestBody body = okhttp3.RequestBody.create(
+                jsonBody, okhttp3.MediaType.parse("application/json")
+        );
+        Request.Builder builder = new Request.Builder().url(url).post(body);
+        if (headers != null) {
+            headers.forEach(builder::header);
+        }
+
+        try (Response response = streamClient.newCall(builder.build()).execute()) {
+            if (!response.isSuccessful()) {
+                String respBody = response.body() != null ? response.body().string() : "";
+                log.warn("HTTP error: url={}, code={}, body={}", url, response.code(), respBody);
+                throw new IOException("HTTP " + response.code() + ": " + respBody);
+            }
+
+            if (response.body() == null) {
+                throw new IOException("Response body is empty");
+            }
+
+            try (BufferedReader reader = new BufferedReader(response.body().charStream())) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    onLine.accept(line);
+                }
+            }
         }
     }
 }

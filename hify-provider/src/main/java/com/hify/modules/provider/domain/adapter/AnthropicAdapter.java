@@ -1,6 +1,8 @@
 package com.hify.modules.provider.domain.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.hify.modules.provider.api.dto.chat.ChatRequest;
+import com.hify.modules.provider.api.dto.chat.ChatResponse;
 import com.hify.modules.provider.api.dto.response.ConnectionTestResult;
 import com.hify.modules.provider.domain.vo.AuthConfig;
 import com.hify.modules.provider.infra.client.LlmHttpClient;
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Anthropic 适配器
@@ -70,5 +73,16 @@ public class AnthropicAdapter extends AbstractProviderAdapter {
             }
         }
         return models;
+    }
+
+    @Override
+    public ChatResponse chat(Provider provider, ChatRequest request) throws IOException {
+        throw new UnsupportedOperationException("Anthropic chat not implemented yet");
+    }
+
+    @Override
+    public void streamChat(Provider provider, ChatRequest request,
+                           Consumer<String> onDelta, Consumer<String> onFinish) throws IOException {
+        throw new UnsupportedOperationException("Anthropic streamChat not implemented yet");
     }
 }

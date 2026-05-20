@@ -1,6 +1,8 @@
 package com.hify.modules.provider.domain.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.hify.modules.provider.api.dto.chat.ChatRequest;
+import com.hify.modules.provider.api.dto.chat.ChatResponse;
 import com.hify.modules.provider.api.dto.response.ConnectionTestResult;
 import com.hify.modules.provider.infra.client.LlmHttpClient;
 import com.hify.modules.provider.infra.entity.Provider;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Ollama 适配器
@@ -49,5 +52,16 @@ public class OllamaAdapter extends AbstractProviderAdapter {
             }
         }
         return models;
+    }
+
+    @Override
+    public ChatResponse chat(Provider provider, ChatRequest request) throws IOException {
+        throw new UnsupportedOperationException("Ollama chat not implemented yet");
+    }
+
+    @Override
+    public void streamChat(Provider provider, ChatRequest request,
+                           Consumer<String> onDelta, Consumer<String> onFinish) throws IOException {
+        throw new UnsupportedOperationException("Ollama streamChat not implemented yet");
     }
 }

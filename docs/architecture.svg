@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 800" width="1080" height="800">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#475569"/>
+    </marker>
+    <marker id="arrow-up" markerWidth="10" markerHeight="10" refX="5" refY="1" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,6 L6,6 L3,0 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1080" height="800" fill="#0b1120" rx="0"/>
+
+  <!-- Title -->
+  <text x="540" y="38" text-anchor="middle" fill="#f1f5f9" font-size="22" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, Noto Sans SC, sans-serif">Hify 平台架构图</text>
+
+  <!-- ================= External Services Layer ================= -->
+  <text x="60" y="74" fill="#94a3b8" font-size="13" font-weight="600" font-family="PingFang SC, Microsoft YaHei, sans-serif">外部服务层</text>
+  <line x1="60" y1="80" x2="150" y2="80" stroke="#6366f1" stroke-width="2"/>
+
+  <rect x="110" y="92" width="180" height="60" rx="8" fill="rgba(30,27,75,0.35)" stroke="#6366f1" stroke-width="1.5"/>
+  <foreignObject x="110" y="92" width="180" height="60">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#c7d2fe;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">OpenAI API</div>
+      <div style="font-size:11px;opacity:0.9;">GPT 系列模型云服务</div>
+    </div>
+  </foreignObject>
+
+  <rect x="314" y="92" width="180" height="60" rx="8" fill="rgba(30,27,75,0.35)" stroke="#6366f1" stroke-width="1.5"/>
+  <foreignObject x="314" y="92" width="180" height="60">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#c7d2fe;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">OpenAI-Compatible</div>
+      <div style="font-size:11px;opacity:0.9;">兼容协议第三方模型</div>
+    </div>
+  </foreignObject>
+
+  <rect x="518" y="92" width="180" height="60" rx="8" fill="rgba(30,27,75,0.35)" stroke="#6366f1" stroke-width="1.5"/>
+  <foreignObject x="518" y="92" width="180" height="60">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#c7d2fe;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">Anthropic API</div>
+      <div style="font-size:11px;opacity:0.9;">Claude 系列模型云服务</div>
+    </div>
+  </foreignObject>
+
+  <rect x="722" y="92" width="180" height="60" rx="8" fill="rgba(30,27,75,0.35)" stroke="#6366f1" stroke-width="1.5"/>
+  <foreignObject x="722" y="92" width="180" height="60">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#c7d2fe;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">Ollama</div>
+      <div style="font-size:11px;opacity:0.9;">本地私有化模型服务</div>
+    </div>
+  </foreignObject>
+
+  <!-- ================= Frontend Layer ================= -->
+  <text x="60" y="196" fill="#94a3b8" font-size="13" font-weight="600" font-family="PingFang SC, Microsoft YaHei, sans-serif">前端层</text>
+  <line x1="60" y1="202" x2="110" y2="202" stroke="#f59e0b" stroke-width="2"/>
+
+  <rect x="350" y="214" width="380" height="56" rx="8" fill="rgba(69,26,3,0.3)" stroke="#f59e0b" stroke-width="2"/>
+  <foreignObject x="350" y="214" width="380" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#fde68a;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:14px;font-weight:bold;margin-bottom:2px;">hify-web</div>
+      <div style="font-size:12px;opacity:0.95;">Vue3 管理控制台，平台统一交互界面</div>
+    </div>
+  </foreignObject>
+
+  <!-- ================= Backend Layer ================= -->
+  <text x="60" y="316" fill="#94a3b8" font-size="13" font-weight="600" font-family="PingFang SC, Microsoft YaHei, sans-serif">后端服务层</text>
+  <line x1="60" y1="322" x2="150" y2="322" stroke="#3b82f6" stroke-width="2"/>
+
+  <!-- Backend group background -->
+  <rect x="60" y="334" width="960" height="298" rx="14" fill="rgba(30,41,59,0.22)" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+  <!-- hify-app gateway -->
+  <rect x="350" y="348" width="380" height="54" rx="8" fill="rgba(23,37,84,0.45)" stroke="#3b82f6" stroke-width="2.5"/>
+  <foreignObject x="350" y="348" width="380" height="54">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#bfdbfe;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:14px;font-weight:bold;margin-bottom:2px;">hify-app</div>
+      <div style="font-size:12px;opacity:0.95;">统一网关入口，聚合对外 REST API</div>
+    </div>
+  </foreignObject>
+
+  <!-- Business modules row 1 -->
+  <rect x="170" y="418" width="180" height="56" rx="8" fill="rgba(30,41,59,0.55)" stroke="#60a5fa" stroke-width="1.5"/>
+  <foreignObject x="170" y="418" width="180" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#e2e8f0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">hify-provider</div>
+      <div style="font-size:11px;opacity:0.9;">LLM 供应商适配与管理</div>
+    </div>
+  </foreignObject>
+
+  <rect x="374" y="418" width="180" height="56" rx="8" fill="rgba(30,41,59,0.55)" stroke="#60a5fa" stroke-width="1.5"/>
+  <foreignObject x="374" y="418" width="180" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#e2e8f0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">hify-agent</div>
+      <div style="font-size:11px;opacity:0.9;">AI Agent 配置与生命周期</div>
+    </div>
+  </foreignObject>
+
+  <rect x="578" y="418" width="180" height="56" rx="8" fill="rgba(30,41,59,0.55)" stroke="#60a5fa" stroke-width="1.5"/>
+  <foreignObject x="578" y="418" width="180" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#e2e8f0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">hify-chat</div>
+      <div style="font-size:11px;opacity:0.9;">流式多轮对话引擎</div>
+    </div>
+  </foreignObject>
+
+  <!-- Business modules row 2 -->
+  <rect x="170" y="488" width="180" height="56" rx="8" fill="rgba(30,41,59,0.55)" stroke="#60a5fa" stroke-width="1.5"/>
+  <foreignObject x="170" y="488" width="180" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#e2e8f0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">hify-knowledge</div>
+      <div style="font-size:11px;opacity:0.9;">RAG 知识库与向量检索</div>
+    </div>
+  </foreignObject>
+
+  <rect x="374" y="488" width="180" height="56" rx="8" fill="rgba(30,41,59,0.55)" stroke="#60a5fa" stroke-width="1.5"/>
+  <foreignObject x="374" y="488" width="180" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#e2e8f0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">hify-workflow</div>
+      <div style="font-size:11px;opacity:0.9;">业务流程编排引擎</div>
+    </div>
+  </foreignObject>
+
+  <rect x="578" y="488" width="180" height="56" rx="8" fill="rgba(30,41,59,0.55)" stroke="#60a5fa" stroke-width="1.5"/>
+  <foreignObject x="578" y="488" width="180" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#e2e8f0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">hify-mcp</div>
+      <div style="font-size:11px;opacity:0.9;">MCP 外部工具协议集成</div>
+    </div>
+  </foreignObject>
+
+  <!-- hify-common -->
+  <rect x="350" y="558" width="380" height="54" rx="8" fill="rgba(6,78,59,0.35)" stroke="#10b981" stroke-width="2"/>
+  <foreignObject x="350" y="558" width="380" height="54">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#a7f3d0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:14px;font-weight:bold;margin-bottom:2px;">hify-common</div>
+      <div style="font-size:12px;opacity:0.95;">公共基建，ORM / 缓存 / 通用工具</div>
+    </div>
+  </foreignObject>
+
+  <!-- ================= Data Layer ================= -->
+  <text x="60" y="706" fill="#94a3b8" font-size="13" font-weight="600" font-family="PingFang SC, Microsoft YaHei, sans-serif">数据层</text>
+  <line x1="60" y1="712" x2="100" y2="712" stroke="#22c55e" stroke-width="2"/>
+
+  <rect x="210" y="724" width="180" height="56" rx="8" fill="rgba(20,83,45,0.35)" stroke="#22c55e" stroke-width="1.5"/>
+  <foreignObject x="210" y="724" width="180" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#bbf7d0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">MySQL</div>
+      <div style="font-size:11px;opacity:0.9;">业务主库存储</div>
+    </div>
+  </foreignObject>
+
+  <rect x="450" y="724" width="180" height="56" rx="8" fill="rgba(20,83,45,0.35)" stroke="#22c55e" stroke-width="1.5"/>
+  <foreignObject x="450" y="724" width="180" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#bbf7d0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">Redis</div>
+      <div style="font-size:11px;opacity:0.9;">缓存与会话加速</div>
+    </div>
+  </foreignObject>
+
+  <rect x="690" y="724" width="180" height="56" rx="8" fill="rgba(20,83,45,0.35)" stroke="#22c55e" stroke-width="1.5"/>
+  <foreignObject x="690" y="724" width="180" height="56">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#bbf7d0;font-family:PingFang SC,Microsoft YaHei,sans-serif;">
+      <div style="font-size:13px;font-weight:bold;margin-bottom:2px;">pgvector</div>
+      <div style="font-size:11px;opacity:0.9;">语义向量检索存储</div>
+    </div>
+  </foreignObject>
+
+  <!-- ================= Connection Lines ================= -->
+  <!-- User -> Frontend -->
+  <line x1="30" y1="242" x2="350" y2="242" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="45" y="228" width="60" height="16" rx="4" fill="#0f172a"/>
+  <text x="75" y="240" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="PingFang SC, Microsoft YaHei, sans-serif">用户访问</text>
+
+  <!-- Frontend -> hify-app -->
+  <line x1="540" y1="270" x2="540" y2="348" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="550" y="300" width="70" height="16" rx="4" fill="#0f172a"/>
+  <text x="585" y="312" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="PingFang SC, Microsoft YaHei, sans-serif">HTTP 请求</text>
+
+  <!-- common -> Data Layer -->
+  <line x1="540" y1="612" x2="540" y2="724" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="550" y="658" width="70" height="16" rx="4" fill="#0f172a"/>
+  <text x="585" y="670" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="PingFang SC, Microsoft YaHei, sans-serif">数据访问</text>
+
+  <!-- provider -> External Services -->
+  <line x1="260" y1="418" x2="260" y2="158" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow-up)"/>
+  <rect x="270" y="270" width="60" height="16" rx="4" fill="#0f172a"/>
+  <text x="300" y="282" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="PingFang SC, Microsoft YaHei, sans-serif">LLM 调用</text>
+</svg>
