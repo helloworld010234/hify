@@ -1,0 +1,22 @@
+# 全局默认负责人
+* @helloworld010234
+
+# 后端模块
+hify-provider/ @helloworld010234
+hify-agent/ @helloworld010234
+hify-chat/ @helloworld010234
+hify-knowledge/ @helloworld010234
+hify-workflow/ @helloworld010234
+hify-mcp/ @helloworld010234
+hify-common/ @helloworld010234
+hify-app/ @helloworld010234
+
+# 前端
+hify-web/ @helloworld010234
+
+# 基础设施与配置
+.github/ @helloworld010234
+.gitmessage @helloworld010234
+CONTRIBUTING.md @helloworld010234
+BRANCH_PROTECTION.md @helloworld010234
+pom.xml @helloworld010234
