@@ -2,6 +2,7 @@ package com.hify.modules.agent.api.dto.response;
 
 import lombok.Data;
 
+import java.util.List;
 import java.time.LocalDateTime;
 
 /**
@@ -24,6 +25,14 @@ public class AgentListResponse {
      */
     private String modelName;
 
+    private String systemPrompt;
+
+    private Integer maxContextTurns;
+
+    private Integer maxTokens;
+
+    private java.math.BigDecimal temperature;
+
     /**
      * 是否启用：1-启用 0-禁用
      */
@@ -38,6 +47,11 @@ public class AgentListResponse {
      * 关联工具数量
      */
     private Integer toolCount;
+
+    /**
+     * 关联的工具 ID 列表（用于列表页快捷编辑）
+     */
+    private List<Long> toolIds;
 
     private LocalDateTime createdAt;
 }

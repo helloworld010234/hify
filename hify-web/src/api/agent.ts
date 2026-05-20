@@ -1,4 +1,5 @@
-import { get, post, put, del } from '@/utils/request'
+import { get, post, put, del, patch } from '@/utils/request'
+import axios from 'axios'
 
 export interface Agent {
   id?: number
@@ -19,7 +20,11 @@ export interface AgentListItem {
   description: string
   modelName: string
   toolCount: number
+  toolIds?: number[]
   temperature: number
+  maxContextTurns: number
+  maxTokens: number
+  systemPrompt?: string
   enabled: number
   createdAt: string
 }
@@ -59,7 +64,7 @@ export interface PageData<T> {
 
 /** 分页获取 Agent 列表 */
 export function getAgentList(params: { page: number; size: number; keyword?: string; enabled?: number; modelConfigId?: number }) {
-  return get<PageData<AgentListItem>>('/v1/agents', params)
+  return axios.get('/api/v1/agents', { params }).then(res => res.data as PageData<AgentListItem>)
 }
 
 /** 创建 Agent */
@@ -90,6 +95,21 @@ export function cloneAgent(id: number) {
 /** 获取可用模型（按供应商分组） */
 export function getModelGroups() {
   return get<ModelGroup[]>('/v1/agent-meta/models')
+}
+
+/** 快捷修改上下文轮数 */
+export function updateMaxContextTurns(id: number, maxContextTurns: number) {
+  return patch<void>(`/v1/agents/${id}/max-context-turns`, { maxContextTurns })
+}
+
+/** 快捷修改温度 */
+export function updateTemperature(id: number, temperature: number) {
+  return patch<void>(`/v1/agents/${id}/temperature`, { temperature })
+}
+
+/** 快捷修改工具绑定 */
+export function updateTools(id: number, toolIds: number[]) {
+  return patch<void>(`/v1/agents/${id}/tools`, { toolIds })
 }
 
 /** 获取可用工具列表 */

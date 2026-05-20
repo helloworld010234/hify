@@ -42,10 +42,8 @@ const fetchData = async () => {
       page: currentPage.value,
       size: pageSize.value
     })
-    if (res.code === 200) {
-      tableData.value = res.data
-      total.value = res.total
-    }
+    tableData.value = res.data || []
+    total.value = res.total || 0
   } finally {
     loading.value = false
   }
@@ -85,7 +83,7 @@ defineExpose({
     <div class="toolbar">
       <slot name="toolbar" />
     </div>
-    <el-table :data="tableData" v-loading="loading" stripe style="width: 100%" @expand-change="(row: any, expandedRows: any[]) => $emit('expand-change', row, expandedRows)">
+    <el-table :data="tableData" v-loading="loading" stripe style="width: 100%" row-key="id" @expand-change="(row: any, expandedRows: any[]) => $emit('expand-change', row, expandedRows)">
       <el-table-column type="expand" v-if="$slots.expand">
         <template #default="scope">
           <slot name="expand" :row="scope.row" :$index="scope.$index" />
@@ -101,7 +99,7 @@ defineExpose({
         :formatter="col.formatter"
       >
         <template #default="scope" v-if="col.slot">
-          <slot :name="col.slot" :row="scope.row" :$index="scope.$index" />
+          <slot :name="col.slot" :row="scope.row" :$index="scope.$index" :id="scope.row.id" />
         </template>
       </el-table-column>
     </el-table>

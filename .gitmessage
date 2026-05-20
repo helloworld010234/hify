@@ -1,0 +1,35 @@
+# 类型(范围): 主题描述（不超过50字符）
+#
+# 类型说明:
+#   feat     新功能
+#   fix      Bug修复
+#   docs     文档更新
+#   style    代码格式（不影响功能）
+#   refactor 重构（既不修复bug也不添加功能）
+#   test     测试相关
+#   chore    构建/工具/依赖变更
+#
+# 范围说明（当前项目）:
+#   provider   供应商模块
+#   agent      Agent配置模块
+#   chat       对话引擎
+#   knowledge  知识库
+#   workflow   工作流
+#   mcp        MCP工具接入
+#   common     公共模块
+#   web        前端
+#   infra      构建/部署/配置
+#
+# 示例:
+#   feat(chat): implement SSE streaming endpoint
+#   fix(provider): resolve NPE when apiKey is empty
+#   test(agent): add integration test for clone operation
+#
+# --- 正文（可选） ---
+# 详细说明变更原因、实现思路、影响范围
+# 每行不超过72字符
+
+#
+# --- Footer（可选） ---
+# 关联Issue: Fixes #123
+# 破坏性变更: BREAKING CHANGE: xxx

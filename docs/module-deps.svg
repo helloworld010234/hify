@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#ef4444"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="600" fill="#0b1120" rx="0"/>
+
+  <!-- Title -->
+  <text x="500" y="36" text-anchor="middle" fill="#f1f5f9" font-size="20" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, sans-serif">Hify 内部模块依赖图</text>
+
+  <!-- ================= Nodes ================= -->
+
+  <!-- app -->
+  <rect x="380" y="60" width="160" height="44" rx="8" fill="rgba(30,58,138,0.35)" stroke="#3b82f6" stroke-width="2"/>
+  <text x="460" y="88" text-anchor="middle" fill="#bfdbfe" font-size="14" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, sans-serif">hify-app</text>
+
+  <!-- agent -->
+  <rect x="150" y="200" width="160" height="44" rx="8" fill="rgba(49,46,129,0.3)" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="230" y="228" text-anchor="middle" fill="#c7d2fe" font-size="14" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, sans-serif">hify-agent</text>
+
+  <!-- provider -->
+  <rect x="40" y="350" width="160" height="44" rx="8" fill="rgba(30,41,59,0.6)" stroke="#64748b" stroke-width="1.5"/>
+  <text x="120" y="378" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, sans-serif">hify-provider</text>
+
+  <!-- chat -->
+  <rect x="230" y="350" width="160" height="44" rx="8" fill="rgba(30,41,59,0.6)" stroke="#64748b" stroke-width="1.5"/>
+  <text x="310" y="378" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, sans-serif">hify-chat</text>
+
+  <!-- knowledge -->
+  <rect x="420" y="350" width="160" height="44" rx="8" fill="rgba(30,41,59,0.6)" stroke="#64748b" stroke-width="1.5"/>
+  <text x="500" y="378" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, sans-serif">hify-knowledge</text>
+
+  <!-- workflow -->
+  <rect x="610" y="350" width="160" height="44" rx="8" fill="rgba(30,41,59,0.6)" stroke="#64748b" stroke-width="1.5"/>
+  <text x="690" y="378" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, sans-serif">hify-workflow</text>
+
+  <!-- mcp -->
+  <rect x="800" y="350" width="160" height="44" rx="8" fill="rgba(30,41,59,0.6)" stroke="#64748b" stroke-width="1.5"/>
+  <text x="880" y="378" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, sans-serif">hify-mcp</text>
+
+  <!-- common -->
+  <rect x="400" y="500" width="160" height="44" rx="8" fill="rgba(6,78,59,0.35)" stroke="#10b981" stroke-width="2"/>
+  <text x="480" y="528" text-anchor="middle" fill="#a7f3d0" font-size="14" font-weight="bold" font-family="PingFang SC, Microsoft YaHei, sans-serif">hify-common</text>
+
+  <!-- ================= Edges ================= -->
+
+  <!-- app -> agent -->
+  <path d="M 420 104 C 420 150, 230 150, 230 200" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- app -> provider -->
+  <path d="M 400 104 C 400 220, 120 220, 120 350" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- app -> chat -->
+  <path d="M 440 104 C 440 220, 310 220, 310 350" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- app -> knowledge -->
+  <path d="M 480 104 C 480 220, 500 220, 500 350" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- app -> workflow -->
+  <path d="M 500 104 C 500 220, 690 220, 690 350" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- app -> mcp -->
+  <path d="M 520 104 C 520 220, 880 220, 880 350" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- app -> common -->
+  <path d="M 540 104 C 540 300, 480 300, 480 500" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- agent -> provider -->
+  <path d="M 230 244 C 230 300, 120 300, 120 350" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- agent -> common -->
+  <path d="M 270 244 C 270 380, 440 380, 440 500" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- provider -> common -->
+  <path d="M 120 394 C 120 450, 440 450, 440 500" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- chat -> common -->
+  <path d="M 310 394 C 310 450, 460 450, 460 500" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- knowledge -> common -->
+  <line x1="500" y1="394" x2="500" y2="500" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- workflow -> common -->
+  <path d="M 690 394 C 690 450, 520 450, 520 500" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- mcp -> common -->
+  <path d="M 880 394 C 880 450, 520 450, 520 500" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Legend -->
+  <rect x="40" y="540" width="260" height="44" rx="6" fill="rgba(30,41,59,0.5)" stroke="#334155" stroke-width="1"/>
+  <text x="55" y="560" fill="#94a3b8" font-size="12" font-family="PingFang SC, Microsoft YaHei, sans-serif">箭头方向：依赖方 → 被依赖方</text>
+  <text x="55" y="576" fill="#94a3b8" font-size="12" font-family="PingFang SC, Microsoft YaHei, sans-serif">未检测到循环依赖</text>
+</svg>

@@ -4,6 +4,9 @@ import com.hify.common.web.PageResult;
 import com.hify.common.web.Result;
 import com.hify.modules.agent.api.dto.request.AgentCreateRequest;
 import com.hify.modules.agent.api.dto.request.AgentListRequest;
+import com.hify.modules.agent.api.dto.request.AgentMaxContextTurnsPatchRequest;
+import com.hify.modules.agent.api.dto.request.AgentTemperaturePatchRequest;
+import com.hify.modules.agent.api.dto.request.AgentToolsPatchRequest;
 import com.hify.modules.agent.api.dto.request.AgentUpdateRequest;
 import com.hify.modules.agent.api.dto.response.AgentDetailResponse;
 import com.hify.modules.agent.api.dto.response.AgentListResponse;
@@ -13,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -82,6 +86,36 @@ public class AgentController {
     public Result<Long> clone(@PathVariable Long id) {
         Long newId = agentService.clone(id);
         return Result.ok(newId);
+    }
+
+    /**
+     * 快捷修改 Agent 上下文轮数（列表页行内编辑）
+     */
+    @PatchMapping("/{id:[0-9]+}/max-context-turns")
+    public Result<Void> updateMaxContextTurns(@PathVariable Long id,
+                                               @Valid @RequestBody AgentMaxContextTurnsPatchRequest request) {
+        agentService.updateMaxContextTurns(id, request.getMaxContextTurns());
+        return Result.ok();
+    }
+
+    /**
+     * 快捷修改 Agent 温度（列表页行内编辑）
+     */
+    @PatchMapping("/{id:[0-9]+}/temperature")
+    public Result<Void> updateTemperature(@PathVariable Long id,
+                                           @Valid @RequestBody AgentTemperaturePatchRequest request) {
+        agentService.updateTemperature(id, request.getTemperature());
+        return Result.ok();
+    }
+
+    /**
+     * 快捷修改 Agent 工具绑定（列表页行内编辑）
+     */
+    @PatchMapping("/{id:[0-9]+}/tools")
+    public Result<Void> updateTools(@PathVariable Long id,
+                                     @Valid @RequestBody AgentToolsPatchRequest request) {
+        agentService.updateToolIds(id, request.getToolIds());
+        return Result.ok();
     }
 
 }
