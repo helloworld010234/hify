@@ -169,7 +169,7 @@ onMounted(async () => {
 
     <!-- 消息列表 -->
     <div class="message-list" ref="messageListRef">
-      <template v-for="(msg, index) in messages" :key="index">
+      <template v-for="(msg, _index) in messages" :key="_index">
         <div :class="['message-row', msg.role]">
           <div class="message-bubble">
             <!-- 加载动画 -->
