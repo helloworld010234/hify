@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# Git pre-push hook — Hify 推送前安全审计
+# =========================================
+# 此 hook 在每次 git push 时自动触发，扫描即将推送的变更中的敏感信息。
+#
+# 安装方式：
+#   ./scripts/install-security-hook.sh
+#
+# 或手动：
+#   git config core.hooksPath .githooks
+#
+# 临时跳过（仅限紧急情况）：
+#   git push --no-verify
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+AUDIT_SCRIPT="${PROJECT_ROOT}/scripts/security-audit.sh"
+
+# 检查审计脚本是否存在
+if [[ ! -f "$AUDIT_SCRIPT" ]]; then
+    echo "[pre-push] 错误：安全审计脚本未找到：$AUDIT_SCRIPT"
+    echo "[pre-push] 推送已阻断，请确认项目完整性。"
+    exit 1
+fi
+
+# 运行安全审计
+exec "$AUDIT_SCRIPT" "$@"
