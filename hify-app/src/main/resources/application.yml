@@ -5,10 +5,12 @@ spring:
   application:
     name: hify
   datasource:
+    # 主数据源：MySQL（MyBatis-Plus 自动使用）
     url: jdbc:mysql://localhost:3306/hify?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
+
   data:
     redis:
       host: localhost
@@ -17,6 +19,26 @@ spring:
       password: your_redis_password
   cache:
     type: simple
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# 第二数据源：PostgreSQL / pgvector（手动配置，不影响主数据源自动配置）
+pgvector:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/hify
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+# RAG 知识库配置
+hify:
+  rag:
+    upload-dir: ./uploads
+    embedding:
+      provider-id: 1              # 关联 t_provider.id，复用 Provider 模块配置
+      model: text-embedding-3-small
 
 mybatis-plus:
   configuration:
