@@ -50,4 +50,9 @@ public class AgentCreateRequest {
      * 关联的工具 ID 列表
      */
     private List<Long> toolIds;
+
+    /**
+     * 绑定的工作流 ID
+     */
+    private Long workflowId;
 }

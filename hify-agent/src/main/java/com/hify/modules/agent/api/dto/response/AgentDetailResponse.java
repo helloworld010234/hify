@@ -47,6 +47,11 @@ public class AgentDetailResponse {
      */
     private List<Long> toolIds;
 
+    /**
+     * 绑定的工作流 ID
+     */
+    private Long workflowId;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -71,6 +76,7 @@ public class AgentDetailResponse {
         resp.setEnabled(agent.getEnabled());
         resp.setKnowledgeIds(knowledgeIds);
         resp.setToolIds(toolIds);
+        resp.setWorkflowId(agent.getWorkflowId());
         resp.setCreatedAt(agent.getCreatedAt());
         resp.setUpdatedAt(agent.getUpdatedAt());
         return resp;

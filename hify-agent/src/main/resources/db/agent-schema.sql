@@ -69,3 +69,10 @@ CREATE TABLE IF NOT EXISTS t_agent_knowledge_rel (
 ALTER TABLE t_agent
     ADD COLUMN knowledge_base_id BIGINT DEFAULT NULL COMMENT '绑定的知识库 ID（t_knowledge_base.id）' AFTER model_config_id,
     ADD KEY idx_knowledge_base (knowledge_base_id, deleted);
+
+-- ------------------------------------------
+-- 扩展：Agent 表增加 workflow_id 字段（绑定工作流）
+-- ------------------------------------------
+ALTER TABLE t_agent
+    ADD COLUMN workflow_id BIGINT DEFAULT NULL COMMENT '绑定的工作流 ID（t_workflow.id）' AFTER knowledge_base_id,
+    ADD KEY idx_workflow (workflow_id, deleted);

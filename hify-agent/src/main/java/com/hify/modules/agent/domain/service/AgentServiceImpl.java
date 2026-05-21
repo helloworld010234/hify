@@ -70,6 +70,7 @@ public class AgentServiceImpl implements AgentService {
         agent.setMaxContextTurns(request.getMaxContextTurns());
         agent.setEnabled(request.getEnabled());
         agent.setKnowledgeBaseId(request.getKnowledgeBaseId());
+        agent.setWorkflowId(request.getWorkflowId());
 
         agentMapper.insert(agent);
 
@@ -114,6 +115,7 @@ public class AgentServiceImpl implements AgentService {
         agent.setMaxContextTurns(request.getMaxContextTurns());
         agent.setEnabled(request.getEnabled());
         agent.setKnowledgeBaseId(request.getKnowledgeBaseId());
+        agent.setWorkflowId(request.getWorkflowId());
 
         agentMapper.updateById(agent);
 

@@ -50,4 +50,9 @@ public class AgentUpdateRequest {
      * 关联的工具 ID 列表（全量覆盖）
      */
     private List<Long> toolIds;
+
+    /**
+     * 绑定的工作流 ID（null 表示解绑）
+     */
+    private Long workflowId;
 }
