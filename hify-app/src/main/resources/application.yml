@@ -38,7 +38,7 @@ hify:
     upload-dir: ./uploads
     embedding:
       provider-id: 1              # 关联 t_provider.id，复用 Provider 模块配置
-      model: text-embedding-3-small
+      model: text-embedding-v4    # 阿里云百炼 DashScope
 
 mybatis-plus:
   configuration:

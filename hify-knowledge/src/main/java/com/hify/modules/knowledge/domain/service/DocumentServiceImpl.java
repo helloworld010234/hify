@@ -68,7 +68,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Value("${hify.rag.embedding.provider-id:}")
     private Long embeddingProviderId;
 
-    @Value("${hify.rag.embedding.model:text-embedding-3-small}")
+    @Value("${hify.rag.embedding.model:text-embedding-v4}")
     private String embeddingModel;
 
     // ==================== 上传接口 ====================
@@ -333,9 +333,13 @@ public class DocumentServiceImpl implements DocumentService {
             throw new RuntimeException("Embedding Provider 不存在: id=" + embeddingProviderId);
         }
         String baseUrl = provider.getBaseUrl();
-        String apiKey = providerService.getApiKey(embeddingProviderId);
+        // 优先从环境变量读取阿里云百炼 API Key，fallback 到 Provider 表
+        String apiKey = System.getenv("ALI_BAI_LIAN_API_KEY");
         if (!StringUtils.hasText(apiKey)) {
-            throw new RuntimeException("Embedding Provider API Key 为空");
+            apiKey = providerService.getApiKey(embeddingProviderId);
+        }
+        if (!StringUtils.hasText(apiKey)) {
+            throw new RuntimeException("Embedding API Key 为空，请配置环境变量 ALI_BAI_LIAN_API_KEY 或 Provider 表");
         }
 
         // 提取文本列表
