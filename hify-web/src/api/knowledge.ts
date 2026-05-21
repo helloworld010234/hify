@@ -13,6 +13,7 @@ export interface KnowledgeBaseItem {
   name: string
   description: string
   enabled: number
+  documentCount: number
   createdAt: string
   updatedAt: string
 }

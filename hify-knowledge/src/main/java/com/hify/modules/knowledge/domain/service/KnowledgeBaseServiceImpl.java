@@ -10,6 +10,7 @@ import com.hify.modules.knowledge.api.dto.request.KnowledgeBaseCreateRequest;
 import com.hify.modules.knowledge.api.dto.request.KnowledgeBaseListRequest;
 import com.hify.modules.knowledge.api.dto.request.KnowledgeBaseUpdateRequest;
 import com.hify.modules.knowledge.api.dto.response.KnowledgeBaseResponse;
+import com.hify.modules.knowledge.infra.entity.Document;
 import com.hify.modules.knowledge.infra.entity.KnowledgeBase;
 import com.hify.modules.knowledge.infra.mapper.DocumentMapper;
 import com.hify.modules.knowledge.infra.mapper.KnowledgeBaseMapper;
@@ -129,6 +130,14 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         resp.setName(kb.getName());
         resp.setDescription(kb.getDescription());
         resp.setEnabled(kb.getEnabled());
+
+        long docCount = documentMapper.selectCount(
+                new LambdaQueryWrapper<Document>()
+                        .eq(Document::getKnowledgeBaseId, kb.getId())
+                        .eq(Document::getDeleted, 0)
+        );
+        resp.setDocumentCount((int) docCount);
+
         resp.setCreatedAt(kb.getCreatedAt());
         resp.setUpdatedAt(kb.getUpdatedAt());
         return resp;

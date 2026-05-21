@@ -63,15 +63,6 @@
             show-word-limit
           />
         </el-form-item>
-        <el-form-item label="状态" prop="enabled">
-          <el-switch
-            v-model="form.enabled"
-            :active-value="1"
-            :inactive-value="0"
-            active-text="启用"
-            inactive-text="禁用"
-          />
-        </el-form-item>
       </template>
     </HifyFormDialog>
   </div>
@@ -98,8 +89,9 @@ const searchName = ref('')
 
 const columns = [
   { prop: 'name', label: '名称', minWidth: 180, slot: 'name' },
-  { prop: 'description', label: '描述', minWidth: 240 },
+  { prop: 'description', label: '描述', minWidth: 200 },
   { prop: 'enabled', label: '状态', width: 80, slot: 'enabled' },
+  { prop: 'documentCount', label: '文档数量', width: 100 },
   { prop: 'createdAt', label: '创建时间', width: 170 },
   { prop: 'action', label: '操作', width: 140, slot: 'action' }
 ]
@@ -118,8 +110,7 @@ const fetchKnowledgeBaseList = (params: { page: number; size: number }) => {
 const handleAdd = () => {
   dialogRef.value?.open({
     name: '',
-    description: '',
-    enabled: 1
+    description: ''
   })
 }
 
@@ -129,8 +120,7 @@ const handleEdit = async (row: KnowledgeBaseItem) => {
     dialogRef.value?.open({
       id: detail.id,
       name: detail.name,
-      description: detail.description,
-      enabled: detail.enabled
+      description: detail.description
     })
   } catch (e: any) {
     // request interceptor 已显示错误

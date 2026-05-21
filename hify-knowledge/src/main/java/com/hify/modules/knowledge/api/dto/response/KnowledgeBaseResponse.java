@@ -14,6 +14,7 @@ public class KnowledgeBaseResponse {
     private String name;
     private String description;
     private Integer enabled;
+    private Integer documentCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
