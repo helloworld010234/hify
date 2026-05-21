@@ -71,6 +71,9 @@ public class DocumentServiceImpl implements DocumentService {
     @Value("${hify.rag.embedding.model:text-embedding-v4}")
     private String embeddingModel;
 
+    @Value("${hify.rag.embedding.dimension:1024}")
+    private int embeddingDimension;
+
     // ==================== 上传接口 ====================
 
     @Override
@@ -300,14 +303,30 @@ public class DocumentServiceImpl implements DocumentService {
 
     /**
      * 估算 overlap token 对应的字符数
+     * <p>
+     * 使用二分查找替代线性扫描，避免 OOM（减少 substring 创建次数）。
      */
     private int estimateCharsForTokens(String text, int start, int end, int targetTokens) {
         if (start >= end) return 0;
-        int pos = end;
-        while (pos > start && estimateTokens(text.substring(pos, end)) < targetTokens) {
-            pos--;
+
+        // 找到满足 token >= targetTokens 的最大 pos（最接近 end）
+        int left = start;
+        int right = end;
+
+        while (left < right) {
+            int mid = left + (right - left + 1) / 2; // 上取整
+            if (mid >= end) {
+                right = mid - 1;
+                continue;
+            }
+            if (estimateTokens(text.substring(mid, end)) >= targetTokens) {
+                left = mid;
+            } else {
+                right = mid - 1;
+            }
         }
-        return end - pos;
+
+        return end - left;
     }
 
     // ==================== Step 4: 向量化 ====================

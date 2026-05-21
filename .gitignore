@@ -36,3 +36,10 @@ Thumbs.db
 .playwright-cli/
 .agents/
 .claude/
+
+# RAG dev artifacts
+uploads/
+hify-app/uploads/
+rag-*.png
+frontend-*.yml
+boundary-*.yml

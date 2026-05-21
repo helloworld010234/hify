@@ -1,7 +1,10 @@
 package com.hify.modules.knowledge.infra.pg;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -11,13 +14,49 @@ import java.util.List;
  * 文档分块向量数据访问（PostgreSQL / pgvector）
  * <p>
  * 使用 {@code pgvectorJdbcTemplate} 操作第二数据源，所有 SQL 均使用 pgvector 扩展语法。
+ * <p>
+ * 向量维度由配置 {@code hify.rag.embedding.dimension} 决定，必须与所选 Embedding 模型输出维度一致。
+ * 切换模型时（如 text-embedding-v4 的 1024 维 ↔ tongyi-embedding-vision-flash 的 768 维），
+ * 需同步修改配置并执行对应维度的 SQL 迁移脚本。
  */
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class DocumentChunkRepository {
 
     @Qualifier("pgvectorJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
+
+    @Value("${hify.rag.embedding.dimension:1024}")
+    private int embeddingDimension;
+
+    // SQL 模板（维度占位符在 @PostConstruct 中替换）
+    private String searchSql;
+    private String insertSql;
+
+    @PostConstruct
+    public void init() {
+        this.searchSql = """
+                SELECT
+                    id,
+                    document_id,
+                    content,
+                    1 - (embedding <=> ?::vector(%d)) AS similarity
+                FROM document_chunk
+                WHERE knowledge_base_id = ?
+                  AND deleted = 0
+                ORDER BY embedding <=> ?::vector(%d)
+                LIMIT ?
+                """.formatted(embeddingDimension, embeddingDimension);
+
+        this.insertSql = """
+                INSERT INTO document_chunk
+                    (knowledge_base_id, document_id, chunk_index, content, embedding, token_count)
+                VALUES (?, ?, ?, ?, ?::vector(%d), ?)
+                """.formatted(embeddingDimension);
+
+        log.info("DocumentChunkRepository initialized with embeddingDimension={}", embeddingDimension);
+    }
 
     /**
      * 相似度检索：按知识库查询与用户问题最相关的 Top-K 个分块
@@ -28,20 +67,7 @@ public class DocumentChunkRepository {
      * @return 分块列表（含相似度）
      */
     public List<DocumentChunk> searchByKnowledgeBase(Long kbId, String embeddingStr, int topK) {
-        String sql = """
-                SELECT
-                    id,
-                    document_id,
-                    content,
-                    1 - (embedding <=> ?::vector(1024)) AS similarity
-                FROM document_chunk
-                WHERE knowledge_base_id = ?
-                  AND deleted = 0
-                ORDER BY embedding <=> ?::vector(1024)
-                LIMIT ?
-                """;
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+        return jdbcTemplate.query(searchSql, (rs, rowNum) -> {
             DocumentChunk chunk = new DocumentChunk();
             chunk.setId(rs.getLong("id"));
             chunk.setDocumentId(rs.getLong("document_id"));
@@ -57,13 +83,7 @@ public class DocumentChunkRepository {
      * @param chunks 分块列表
      */
     public void batchInsert(List<DocumentChunk> chunks) {
-        String sql = """
-                INSERT INTO document_chunk
-                    (knowledge_base_id, document_id, chunk_index, content, embedding, token_count)
-                VALUES (?, ?, ?, ?, ?::vector(1024), ?)
-                """;
-
-        jdbcTemplate.batchUpdate(sql, chunks, chunks.size(), (ps, chunk) -> {
+        jdbcTemplate.batchUpdate(insertSql, chunks, chunks.size(), (ps, chunk) -> {
             ps.setLong(1, chunk.getKnowledgeBaseId());
             ps.setLong(2, chunk.getDocumentId());
             ps.setInt(3, chunk.getChunkIndex());

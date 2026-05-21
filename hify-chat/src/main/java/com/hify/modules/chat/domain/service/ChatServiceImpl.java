@@ -12,6 +12,7 @@ import com.hify.modules.chat.api.dto.response.ChatSessionResponse;
 import com.hify.modules.chat.api.dto.response.ChatStreamEvent;
 import com.hify.modules.chat.domain.assembler.ChatContextAssembler;
 import com.hify.modules.chat.infra.entity.ChatMessage;
+import com.hify.modules.knowledge.api.KnowledgeRetrievalService;
 import com.hify.modules.chat.infra.entity.ChatSession;
 import com.hify.modules.chat.infra.mapper.ChatMessageMapper;
 import com.hify.modules.chat.infra.mapper.ChatSessionMapper;
@@ -48,6 +49,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatSessionMapper chatSessionMapper;
     private final ChatMessageMapper chatMessageMapper;
     private final ObjectMapper objectMapper;
+    private final KnowledgeRetrievalService knowledgeRetrievalService;
 
     @Override
     public ChatSessionResponse createSession(Long agentId) {
@@ -115,10 +117,12 @@ public class ChatServiceImpl implements ChatService {
 
     private ChatRequest buildChatRequest(AgentDetailResponse agent, List<ChatMessage> history,
                                           ChatStreamRequest request) {
+        String systemPrompt = buildSystemPromptWithRag(agent, request.getMessage());
+
         ChatRequest chatRequest = new ChatRequest();
         chatRequest.setMessages(contextAssembler.assemble(
                 history,
-                agent.getSystemPrompt(),
+                systemPrompt,
                 request.getMessage(),
                 request.getContextStrategy(),
                 agent.getMaxTokens(),
@@ -127,6 +131,41 @@ public class ChatServiceImpl implements ChatService {
         chatRequest.setTemperature(agent.getTemperature());
         chatRequest.setMaxTokens(agent.getMaxTokens());
         return chatRequest;
+    }
+
+    /**
+     * 构建带 RAG 检索结果的 System Prompt
+     */
+    private String buildSystemPromptWithRag(AgentDetailResponse agent, String userMessage) {
+        String originalPrompt = agent.getSystemPrompt();
+
+        // 检查 Agent 是否绑定了知识库
+        Long kbId = agent.getKnowledgeBaseId();
+        if (kbId == null) {
+            log.debug("RAG skipped: agentId={}, knowledgeBaseId is null", agent.getId());
+            return originalPrompt;
+        }
+
+        // 检索相关知识库分块
+        List<String> chunks = knowledgeRetrievalService.retrieve(kbId, userMessage, 3, 0.35);
+        log.debug("RAG retrieve result: agentId={}, kbId={}, chunks={}", agent.getId(), kbId, chunks.size());
+        if (chunks.isEmpty()) {
+            return originalPrompt;
+        }
+
+        // 拼接 RAG 提示词
+        StringBuilder sb = new StringBuilder();
+        if (originalPrompt != null && !originalPrompt.isBlank()) {
+            sb.append(originalPrompt);
+        }
+        sb.append("\n\n请基于以下参考资料回答用户问题。\n");
+        sb.append("如果资料中没有相关信息，直接说\"我没有找到相关资料\"，不要编造。\n\n");
+        sb.append("【参考资料】\n");
+        for (int i = 0; i < chunks.size(); i++) {
+            sb.append("[").append(i + 1).append("] ").append(chunks.get(i)).append("\n");
+        }
+
+        return sb.toString();
     }
 
     private void handleDelta(SseEmitter emitter, StringBuilder contentBuilder,
