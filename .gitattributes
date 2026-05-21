@@ -1,0 +1,79 @@
+# Hify 项目 Git 属性配置
+# ======================
+# 统一行尾符、定义 diff 行为、标记二进制文件。
+
+# ── 行尾符规范 ────────────────────────────────────
+# 所有文本文件自动使用 LF（Unix 风格）
+* text=auto eol=lf
+
+# Windows 批处理脚本保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# ── 文本文件类型 ──────────────────────────────────
+# Java / Spring Boot
+*.java text diff=java
+*.properties text
+*.yml text diff=yaml
+*.yaml text diff=yaml
+*.xml text diff=xml
+*.sql text
+*.md text diff=markdown
+*.json text
+
+# Vue / 前端
+*.js text
+*.ts text
+*.vue text
+*.css text
+*.scss text
+*.html text diff=html
+*.json text
+
+# 构建脚本
+*.sh text eol=lf
+*.bash text eol=lf
+pom.xml text diff=xml
+
+# ── 二进制文件（禁止 diff）─────────────────────────
+# 图片
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+
+# 字体
+*.ttf binary
+*.eot binary
+*.woff binary
+*.woff2 binary
+
+# 文档
+*.pdf binary
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
+*.ppt binary
+*.pptx binary
+
+# 压缩包
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+*.rar binary
+
+# Java 构建产物
+*.jar binary
+*.war binary
+*.ear binary
+*.class binary
+
+# 其他
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
