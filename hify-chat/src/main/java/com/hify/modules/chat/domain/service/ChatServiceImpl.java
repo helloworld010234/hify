@@ -18,6 +18,7 @@ import com.hify.modules.chat.infra.mapper.ChatMessageMapper;
 import com.hify.modules.chat.infra.mapper.ChatSessionMapper;
 import com.hify.modules.provider.api.LlmService;
 import com.hify.modules.provider.api.dto.chat.ChatRequest;
+import com.hify.modules.workflow.api.WorkflowRunService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageMapper chatMessageMapper;
     private final ObjectMapper objectMapper;
     private final KnowledgeRetrievalService knowledgeRetrievalService;
+    private final WorkflowRunService workflowRunService;
 
     @Override
     public ChatSessionResponse createSession(Long agentId) {
@@ -76,6 +78,24 @@ public class ChatServiceImpl implements ChatService {
             AgentDetailResponse agent = validateAgent(session.getAgentId());
 
             persistenceService.saveUserMessage(sessionId, request.getMessage());
+
+            // 若 Agent 绑定了工作流，走同步工作流执行，不走 LLM 流式
+            Long workflowId = agent.getWorkflowId();
+            if (workflowId != null) {
+                try {
+                    String output = workflowRunService.run(workflowId, request.getMessage());
+                    int tokens = TokenUtil.estimateTokens(output);
+                    persistenceService.saveAssistantMessage(session.getId(), output, tokens);
+                    long latency = System.currentTimeMillis() - startTime;
+                    sendEvent(emitter, ChatStreamEvent.done("stop", latency));
+                    completeEmitter(emitter);
+                } catch (BizException e) {
+                    log.error("Workflow execution failed, workflowId={}", workflowId, e);
+                    sendEvent(emitter, ChatStreamEvent.error("WORKFLOW_ERROR", e.getMessage()));
+                    completeEmitterWithError(emitter, e);
+                }
+                return;
+            }
 
             List<ChatMessage> history = loadHistory(sessionId, agent);
             ChatRequest chatRequest = buildChatRequest(agent, history, request);
