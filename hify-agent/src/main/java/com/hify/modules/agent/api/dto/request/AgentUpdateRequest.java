@@ -24,6 +24,11 @@ public class AgentUpdateRequest {
     @NotNull(message = "必须绑定一个模型配置")
     private Long modelConfigId;
 
+    /**
+     * 绑定的知识库 ID
+     */
+    private Long knowledgeBaseId;
+
     @DecimalMin(value = "0.00", message = "温度不能小于 0")
     @DecimalMax(value = "1.00", message = "温度不能大于 1")
     private BigDecimal temperature = new BigDecimal("0.70");
@@ -45,4 +50,9 @@ public class AgentUpdateRequest {
      * 关联的工具 ID 列表（全量覆盖）
      */
     private List<Long> toolIds;
+
+    /**
+     * 绑定的工作流 ID（null 表示解绑）
+     */
+    private Long workflowId;
 }

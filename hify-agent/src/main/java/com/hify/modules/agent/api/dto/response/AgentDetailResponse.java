@@ -23,6 +23,11 @@ public class AgentDetailResponse {
     private Long modelConfigId;
 
     /**
+     * 绑定的知识库 ID
+     */
+    private Long knowledgeBaseId;
+
+    /**
      * 模型显示名称
      */
     private String modelName;
@@ -42,6 +47,11 @@ public class AgentDetailResponse {
      */
     private List<Long> toolIds;
 
+    /**
+     * 绑定的工作流 ID
+     */
+    private Long workflowId;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -58,6 +68,7 @@ public class AgentDetailResponse {
         resp.setDescription(agent.getDescription());
         resp.setSystemPrompt(agent.getSystemPrompt());
         resp.setModelConfigId(agent.getModelConfigId());
+        resp.setKnowledgeBaseId(agent.getKnowledgeBaseId());
         resp.setModelName(modelName);
         resp.setTemperature(agent.getTemperature());
         resp.setMaxTokens(agent.getMaxTokens());
@@ -65,6 +76,7 @@ public class AgentDetailResponse {
         resp.setEnabled(agent.getEnabled());
         resp.setKnowledgeIds(knowledgeIds);
         resp.setToolIds(toolIds);
+        resp.setWorkflowId(agent.getWorkflowId());
         resp.setCreatedAt(agent.getCreatedAt());
         resp.setUpdatedAt(agent.getUpdatedAt());
         return resp;

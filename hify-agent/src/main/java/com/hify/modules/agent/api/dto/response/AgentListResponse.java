@@ -21,6 +21,11 @@ public class AgentListResponse {
     private Long modelConfigId;
 
     /**
+     * 绑定的知识库 ID
+     */
+    private Long knowledgeBaseId;
+
+    /**
      * 模型显示名称（跨模块查询填充）
      */
     private String modelName;

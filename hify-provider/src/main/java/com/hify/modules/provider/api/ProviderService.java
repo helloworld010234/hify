@@ -81,4 +81,12 @@ public interface ProviderService {
      * 查询所有可用模型（不分页，用于下拉选择等辅助场景）
      */
     List<ModelDto> listAllActiveModels();
+
+    /**
+     * 获取供应商原始 API Key（明文，仅限内部服务使用）
+     *
+     * @param id 供应商 ID
+     * @return API Key 明文，不存在返回 null
+     */
+    String getApiKey(Long id);
 }

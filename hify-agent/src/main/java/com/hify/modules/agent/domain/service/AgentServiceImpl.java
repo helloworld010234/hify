@@ -69,6 +69,8 @@ public class AgentServiceImpl implements AgentService {
         agent.setMaxTokens(request.getMaxTokens());
         agent.setMaxContextTurns(request.getMaxContextTurns());
         agent.setEnabled(request.getEnabled());
+        agent.setKnowledgeBaseId(request.getKnowledgeBaseId());
+        agent.setWorkflowId(request.getWorkflowId());
 
         agentMapper.insert(agent);
 
@@ -112,6 +114,8 @@ public class AgentServiceImpl implements AgentService {
         agent.setMaxTokens(request.getMaxTokens());
         agent.setMaxContextTurns(request.getMaxContextTurns());
         agent.setEnabled(request.getEnabled());
+        agent.setKnowledgeBaseId(request.getKnowledgeBaseId());
+        agent.setWorkflowId(request.getWorkflowId());
 
         agentMapper.updateById(agent);
 
@@ -216,6 +220,7 @@ public class AgentServiceImpl implements AgentService {
             resp.setModelConfigId(agent.getModelConfigId());
             resp.setModelName(modelNameMap.getOrDefault(agent.getModelConfigId(), ""));
             resp.setSystemPrompt(agent.getSystemPrompt());
+            resp.setKnowledgeBaseId(agent.getKnowledgeBaseId());
             resp.setMaxContextTurns(agent.getMaxContextTurns());
             resp.setMaxTokens(agent.getMaxTokens());
             resp.setTemperature(agent.getTemperature());
@@ -247,6 +252,7 @@ public class AgentServiceImpl implements AgentService {
         agent.setTemperature(source.getTemperature());
         agent.setMaxTokens(source.getMaxTokens());
         agent.setMaxContextTurns(source.getMaxContextTurns());
+        agent.setKnowledgeBaseId(source.getKnowledgeBaseId());
         agent.setEnabled(0); // 克隆后默认禁用，需手动启用
 
         agentMapper.insert(agent);

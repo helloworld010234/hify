@@ -5,10 +5,12 @@ spring:
   application:
     name: hify
   datasource:
+    # 主数据源：MySQL（MyBatis-Plus 自动使用）
     url: jdbc:mysql://localhost:3306/hify?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
+
   data:
     redis:
       host: localhost
@@ -17,6 +19,28 @@ spring:
       password: your_redis_password
   cache:
     type: simple
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# 第二数据源：PostgreSQL / pgvector（手动配置，不影响主数据源自动配置）
+pgvector:
+  datasource:
+    url: jdbc:postgresql://8.136.34.168:5432/myhify
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+
+# RAG 知识库配置
+hify:
+  rag:
+    upload-dir: ./uploads
+    embedding:
+      provider-id: 1              # 关联 t_provider.id，复用 Provider 模块配置
+      model: text-embedding-v4       # 默认纯文本模型（1024维，OpenAI兼容接口）
+      # model: tongyi-embedding-vision-flash  # 多模态模型（768维，DashScope原生接口）
+      dimension: 1024                # 必须与模型维度一致，切换模型时请同步修改
 
 mybatis-plus:
   configuration:

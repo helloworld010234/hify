@@ -373,6 +373,15 @@ public class ProviderServiceImpl implements ProviderService {
         return resp;
     }
 
+    @Override
+    public String getApiKey(Long id) {
+        Provider provider = providerMapper.selectById(id);
+        if (provider == null || provider.getDeleted() != null && provider.getDeleted() == 1) {
+            return null;
+        }
+        return provider.getApiKey();
+    }
+
     /**
      * API 密钥掩码：保留前 6 位和后 4 位，中间用 **** 替换
      */
