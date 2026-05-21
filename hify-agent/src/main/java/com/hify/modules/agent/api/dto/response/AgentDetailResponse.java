@@ -23,6 +23,11 @@ public class AgentDetailResponse {
     private Long modelConfigId;
 
     /**
+     * 绑定的知识库 ID
+     */
+    private Long knowledgeBaseId;
+
+    /**
      * 模型显示名称
      */
     private String modelName;
@@ -58,6 +63,7 @@ public class AgentDetailResponse {
         resp.setDescription(agent.getDescription());
         resp.setSystemPrompt(agent.getSystemPrompt());
         resp.setModelConfigId(agent.getModelConfigId());
+        resp.setKnowledgeBaseId(agent.getKnowledgeBaseId());
         resp.setModelName(modelName);
         resp.setTemperature(agent.getTemperature());
         resp.setMaxTokens(agent.getMaxTokens());

@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS t_agent (
     description         VARCHAR(500)    NOT NULL DEFAULT '',
     system_prompt       CLOB,
     model_config_id     BIGINT          NOT NULL,
+    knowledge_base_id   BIGINT,
     temperature         DECIMAL(3,2)    NOT NULL DEFAULT 0.70,
     max_tokens          INT             NOT NULL DEFAULT 2048,
     max_context_turns   INT             NOT NULL DEFAULT 10,
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS t_agent (
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_name_deleted ON t_agent(name, deleted);
 CREATE INDEX IF NOT EXISTS idx_model_config ON t_agent(model_config_id, deleted);
+CREATE INDEX IF NOT EXISTS idx_knowledge_base ON t_agent(knowledge_base_id, deleted);
 
 CREATE TABLE IF NOT EXISTS t_agent_tool (
     id            BIGINT          NOT NULL AUTO_INCREMENT PRIMARY KEY,

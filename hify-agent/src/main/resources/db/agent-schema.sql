@@ -62,3 +62,10 @@ CREATE TABLE IF NOT EXISTS t_agent_knowledge_rel (
     UNIQUE KEY uk_agent_knowledge (agent_id, knowledge_id),
     KEY idx_agent_id (agent_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent-知识库关联表';
+
+-- ------------------------------------------
+-- 扩展：Agent 表增加 knowledge_base_id 字段（单知识库绑定）
+-- ------------------------------------------
+ALTER TABLE t_agent
+    ADD COLUMN knowledge_base_id BIGINT DEFAULT NULL COMMENT '绑定的知识库 ID（t_knowledge_base.id）' AFTER model_config_id,
+    ADD KEY idx_knowledge_base (knowledge_base_id, deleted);
