@@ -45,6 +45,11 @@ public class Agent extends BaseEntity {
     private Long knowledgeBaseId;
 
     /**
+     * 绑定的工作流 ID（t_workflow.id）
+     */
+    private Long workflowId;
+
+    /**
      * 温度（0.00 ~ 1.00）
      */
     private BigDecimal temperature;

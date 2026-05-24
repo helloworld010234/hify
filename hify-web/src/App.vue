@@ -29,6 +29,10 @@
           <el-icon><Tools /></el-icon>
           <span>MCP Server</span>
         </el-menu-item>
+        <el-menu-item index="/workflows">
+          <el-icon><Connection /></el-icon>
+          <span>工作流</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-main class="main">
@@ -40,7 +44,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Setting, User, ChatLineRound, Tools } from '@element-plus/icons-vue'
+import { Setting, User, ChatLineRound, Tools, Connection } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeMenu = computed(() => route.path)

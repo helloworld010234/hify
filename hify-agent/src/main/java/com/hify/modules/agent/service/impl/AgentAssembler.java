@@ -28,6 +28,7 @@ public class AgentAssembler {
         resp.setEnabled(agent.getEnabled());
         resp.setKnowledgeIds(knowledgeIds);
         resp.setToolIds(toolIds);
+        resp.setWorkflowId(agent.getWorkflowId());
         resp.setCreatedAt(agent.getCreatedAt());
         resp.setUpdatedAt(agent.getUpdatedAt());
         return resp;

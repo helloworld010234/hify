@@ -47,6 +47,11 @@ public class AgentDetailResponse {
      */
     private List<Long> toolIds;
 
+    /**
+     * 绑定的工作流 ID
+     */
+    private Long workflowId;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

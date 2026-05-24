@@ -1,0 +1,66 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: ◈
+      - generic [ref=e7]: Hify
+    - menubar [ref=e8]:
+      - menuitem "模型管理" [ref=e9] [cursor=pointer]:
+        - img [ref=e11]
+        - generic [ref=e13]: 模型管理
+      - menuitem "Agent 管理" [ref=e14] [cursor=pointer]:
+        - img [ref=e16]
+        - generic [ref=e18]: Agent 管理
+      - menuitem "对话" [ref=e19] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e24]: 对话
+      - menuitem "MCP Server" [ref=e25] [cursor=pointer]:
+        - img [ref=e27]
+        - generic [ref=e29]: MCP Server
+  - main [ref=e30]:
+    - generic [ref=e152]:
+      - generic [ref=e153]:
+        - generic [ref=e154]:
+          - button "返回" [ref=e155] [cursor=pointer]:
+            - generic [ref=e156]:
+              - img [ref=e158]
+              - text: 返回
+          - heading "refund-server" [level=2] [ref=e160]
+          - generic [ref=e162]: 未知
+        - generic [ref=e163]:
+          - button "刷新" [ref=e164] [cursor=pointer]:
+            - generic [ref=e165]: 刷新
+          - button "连通测试" [ref=e166] [cursor=pointer]:
+            - generic [ref=e167]: 连通测试
+      - generic [ref=e168]:
+        - generic [ref=e169]:
+          - generic [ref=e170]: 工具列表
+          - generic [ref=e171] [cursor=pointer]:
+            - generic [ref=e172]: cancel_refund
+            - generic [ref=e173]: 撤销退款申请。仅在用户明确要求取消退款时调用。只有 PENDING 可撤销。
+          - generic [ref=e174] [cursor=pointer]:
+            - generic [ref=e175]: check_refund_eligibility
+            - generic [ref=e176]: 查询订单退款资格。用户说我要退款时，必须先调此工具确认是否符合条件。
+          - generic [ref=e177] [cursor=pointer]:
+            - generic [ref=e178]: get_refund_status
+            - generic [ref=e179]: 查询指定订单最新的退款申请状态。用户问退款到哪了时调用。
+          - generic [ref=e180] [cursor=pointer]:
+            - generic [ref=e181]: submit_refund
+            - generic [ref=e182]: 提交退款申请。仅在 check_refund_eligibility 返回 eligible=true 后才可调用。
+        - generic [ref=e183]:
+          - generic [ref=e184]:
+            - heading "check_refund_eligibility" [level=3] [ref=e223]
+            - paragraph [ref=e186]: 查询订单退款资格。用户说我要退款时，必须先调此工具确认是否符合条件。
+          - separator [ref=e187]
+          - generic [ref=e188]:
+            - generic [ref=e224]:
+              - generic [ref=e225]: "*order_id *"
+              - textbox "*order_id *" [ref=e229]:
+                - /placeholder: 订单编号
+            - button "调用" [ref=e198] [cursor=pointer]:
+              - generic [ref=e199]: 调用
+          - separator [ref=e200]
+          - generic [ref=e201]:
+            - generic [ref=e202]: 调用结果
+            - generic [ref=e203]:
+              - img [ref=e205]
+              - paragraph [ref=e222]: 点击「调用」查看结果
