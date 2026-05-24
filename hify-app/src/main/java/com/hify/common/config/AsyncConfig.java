@@ -31,4 +31,36 @@ public class AsyncConfig {
                 new ThreadPoolExecutor.AbortPolicy()
         );
     }
+
+    /**
+     * LLM 非流式调用线程池
+     */
+    @Bean("llmExecutor")
+    public ThreadPoolExecutor llmExecutor() {
+        return new ThreadPoolExecutor(
+                4,
+                20,
+                60L,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(100),
+                new ThreadFactoryBuilder().setNameFormat("llm-%d").setDaemon(true).build(),
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+    }
+
+    /**
+     * 通用异步线程池
+     */
+    @Bean("asyncExecutor")
+    public ThreadPoolExecutor asyncExecutor() {
+        return new ThreadPoolExecutor(
+                2,
+                10,
+                60L,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(50),
+                new ThreadFactoryBuilder().setNameFormat("async-%d").setDaemon(true).build(),
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+    }
 }

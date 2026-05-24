@@ -1,7 +1,7 @@
 package com.hify.modules.provider.api;
 
-import com.hify.modules.provider.api.dto.chat.ChatRequest;
-import com.hify.modules.provider.api.dto.chat.ChatResponse;
+import com.hify.modules.provider.dto.chat.ChatRequest;
+import com.hify.modules.provider.dto.chat.ChatResponse;
 
 import java.io.IOException;
 import java.util.function.Consumer;

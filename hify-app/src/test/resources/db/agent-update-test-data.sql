@@ -17,3 +17,13 @@ INSERT INTO t_agent_knowledge_rel (agent_id, knowledge_id) VALUES (1300, 3);
 
 INSERT INTO t_agent_tool (agent_id, tool_id) VALUES (1300, 100);
 INSERT INTO t_agent_tool (agent_id, tool_id) VALUES (1300, 200);
+
+-- MCP 测试工具数据
+INSERT INTO t_mcp_server (id, name, endpoint, enabled, status, tool_count, deleted)
+VALUES (300, 'UpdateMcpServer', 'http://localhost:9003/mcp', TRUE, 'connected', 3, FALSE);
+
+INSERT INTO t_mcp_tool (id, server_id, name, description, input_schema, deleted)
+VALUES
+(100, 300, 'tool_100', 'Tool 100', '{"type":"object"}', FALSE),
+(200, 300, 'tool_200', 'Tool 200', '{"type":"object"}', FALSE),
+(300, 300, 'tool_300', 'Tool 300', '{"type":"object"}', FALSE);

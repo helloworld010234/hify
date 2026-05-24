@@ -1,6 +1,20 @@
 server:
   port: 8080
 
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: hify
+
 spring:
   application:
     name: hify
@@ -41,6 +55,28 @@ hify:
       model: text-embedding-v4       # 默认纯文本模型（1024维，OpenAI兼容接口）
       # model: tongyi-embedding-vision-flash  # 多模态模型（768维，DashScope原生接口）
       dimension: 1024                # 必须与模型维度一致，切换模型时请同步修改
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      llm-default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        register-health-indicator: true
+  retry:
+    configs:
+      timeout-retry:
+        max-attempts: 3
+        wait-duration: 1s
+        retry-exceptions:
+          - java.net.SocketTimeoutException
+      rate-limit-retry:
+        max-attempts: 3
+        exponential-backoff-multiplier: 2
+        wait-duration: 2s
 
 mybatis-plus:
   configuration:

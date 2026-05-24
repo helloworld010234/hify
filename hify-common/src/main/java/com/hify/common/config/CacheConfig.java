@@ -5,15 +5,17 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 /**
- * Spring Cache 配置
+ * Spring Cache 配置（开发环境）。
  * <p>
- * 当前使用内存缓存（ConcurrentMapCacheManager），避免本地开发时依赖 Redis。
- * 生产环境可切换为 RedisCacheManager。
+ * 开发环境使用内存缓存，避免本地开发时依赖 Redis。
+ * 生产环境由 {@link RedisConfig} 提供 RedisCacheManager。
  */
 @Configuration
 @EnableCaching
+@Profile("dev")
 public class CacheConfig {
 
     @Bean

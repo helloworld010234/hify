@@ -31,6 +31,16 @@ const router = createRouter({
       path: '/knowledge-bases/:id/documents',
       name: 'KnowledgeDocuments',
       component: () => import('@/views/knowledge/documents.vue')
+    },
+    {
+      path: '/mcp-servers',
+      name: 'McpServers',
+      component: () => import('@/views/mcp/index.vue')
+    },
+    {
+      path: '/mcp-servers/:id',
+      name: 'McpServerDetail',
+      component: () => import('@/views/mcp/detail.vue')
     }
   ]
 })

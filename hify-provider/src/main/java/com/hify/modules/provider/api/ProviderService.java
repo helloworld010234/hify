@@ -1,12 +1,13 @@
 package com.hify.modules.provider.api;
 
-import com.hify.common.web.PageResult;
-import com.hify.modules.provider.api.dto.ModelDto;
-import com.hify.modules.provider.api.dto.request.ProviderCreateRequest;
-import com.hify.modules.provider.api.dto.request.ProviderListRequest;
-import com.hify.modules.provider.api.dto.request.ProviderUpdateRequest;
-import com.hify.modules.provider.api.dto.response.ProviderDetailResponse;
-import com.hify.modules.provider.api.dto.response.ProviderListResponse;
+import com.hify.common.controller.PageResult;
+import com.hify.common.controller.Result;
+import com.hify.modules.provider.dto.ModelDto;
+import com.hify.modules.provider.dto.request.ProviderCreateRequest;
+import com.hify.modules.provider.dto.request.ProviderListRequest;
+import com.hify.modules.provider.dto.request.ProviderUpdateRequest;
+import com.hify.modules.provider.dto.response.ProviderDetailResponse;
+import com.hify.modules.provider.dto.response.ProviderListResponse;
 
 import java.util.List;
 
@@ -54,7 +55,7 @@ public interface ProviderService {
      * @param request 列表查询条件
      * @return 分页结果
      */
-    PageResult<ProviderListResponse> list(ProviderListRequest request);
+    Result<PageResult<ProviderListResponse>> list(ProviderListRequest request);
 
     /**
      * 连通性测试
@@ -62,7 +63,7 @@ public interface ProviderService {
      * @param id 供应商 ID
      * @return 测试结果（success、latencyMs、modelCount、errorMessage）
      */
-    com.hify.modules.provider.api.dto.response.ConnectionTestResult testConnection(Long id);
+    com.hify.modules.provider.dto.response.ConnectionTestResponse testConnection(Long id);
 
     /**
      * 根据模型配置 ID 查询模型名称

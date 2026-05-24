@@ -1,6 +1,6 @@
 package com.hify.common.exception;
 
-import com.hify.common.web.Result;
+import com.hify.common.controller.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;

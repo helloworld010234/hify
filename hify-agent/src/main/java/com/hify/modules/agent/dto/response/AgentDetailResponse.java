@@ -1,0 +1,54 @@
+package com.hify.modules.agent.dto.response;
+
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * Agent 详情响应
+ */
+@Data
+public class AgentDetailResponse {
+
+    private Long id;
+    private String name;
+    private String description;
+    private String systemPrompt;
+
+    /**
+     * 绑定的模型配置 ID
+     */
+    private Long modelConfigId;
+
+    /**
+     * 绑定的知识库 ID
+     */
+    private Long knowledgeBaseId;
+
+    /**
+     * 模型显示名称
+     */
+    private String modelName;
+
+    private BigDecimal temperature;
+    private Integer maxTokens;
+    private Integer maxContextTurns;
+    private Integer enabled;
+
+    /**
+     * 关联的知识库 ID 列表
+     */
+    private List<Long> knowledgeIds;
+
+    /**
+     * 关联的工具 ID 列表
+     */
+    private List<Long> toolIds;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+
+}

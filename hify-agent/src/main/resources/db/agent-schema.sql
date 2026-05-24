@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS t_agent (
 CREATE TABLE IF NOT EXISTS t_agent_tool (
     id            BIGINT          NOT NULL AUTO_INCREMENT COMMENT '主键',
     agent_id      BIGINT          NOT NULL COMMENT 'Agent ID（t_agent.id）',
-    tool_id       BIGINT          NOT NULL COMMENT '关联工具 ID（mcp_server.id）',
+    tool_id       BIGINT          NOT NULL COMMENT '关联工具 ID（t_mcp_tool.id）',
     created_at    DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (id),
