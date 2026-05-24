@@ -66,6 +66,7 @@ import { useRouter } from 'vue-router'
 import HifyTable from '@/components/HifyTable.vue'
 import HifyFormDialog from '@/components/HifyFormDialog.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getMcpServerList, createMcpServer, updateMcpServer, deleteMcpServer, testMcpConnection } from '@/api/mcp'
 
 const router = useRouter()
 const tableRef = ref<InstanceType<typeof HifyTable>>()
@@ -103,8 +104,8 @@ const statusLabel = (status: string) => {
 }
 
 const fetchMcpServerList = async (params: { page: number; size: number }) => {
-  const res = await fetch(`/api/v1/mcp-servers?page=${params.page}&size=${params.size}&keyword=${encodeURIComponent(searchKey.value)}`)
-  return res.json()
+  const res = await getMcpServerList({ ...params, keyword: searchKey.value })
+  return res
 }
 
 const handleAdd = () => {
@@ -117,15 +118,10 @@ const handleEdit = (row: any) => {
 
 const handleTest = async (row: any) => {
   try {
-    const res = await fetch(`/api/v1/mcp-servers/${row.id}/test`, { method: 'POST' })
-    const data = await res.json()
-    if (data.code === 200) {
-      ElMessage.success(data.data.success ? '连通成功' : `连通失败：${data.data.errorMessage}`)
-    } else {
-      ElMessage.error(data.message || '测试失败')
-    }
-  } catch (e) {
-    ElMessage.error('网络异常')
+    const res = await testMcpConnection(row.id)
+    ElMessage.success(res.success ? '连通成功' : `连通失败：${res.errorMessage}`)
+  } catch (e: any) {
+    ElMessage.error(e.message || '网络异常')
   }
 }
 
@@ -136,7 +132,7 @@ const handleDebug = (row: any) => {
 const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定删除 MCP Server「${row.name}」吗？`, '提示', { type: 'warning' })
     .then(async () => {
-      await fetch(`/api/v1/mcp-servers/${row.id}`, { method: 'DELETE' })
+      await deleteMcpServer(row.id)
       ElMessage.success('删除成功')
       tableRef.value?.refresh()
     })
@@ -144,20 +140,17 @@ const handleDelete = (row: any) => {
 }
 
 const handleSubmit = async (form: any) => {
-  const url = form._isEdit ? `/api/v1/mcp-servers/${form.id}` : '/api/v1/mcp-servers'
-  const method = form._isEdit ? 'PUT' : 'POST'
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(form),
-  })
-  const data = await res.json()
-  if (data.code === 200) {
+  try {
+    if (form._isEdit) {
+      await updateMcpServer(form.id, { name: form.name, endpoint: form.endpoint, enabled: form.enabled })
+    } else {
+      await createMcpServer({ name: form.name, endpoint: form.endpoint, enabled: form.enabled })
+    }
     ElMessage.success(form._isEdit ? '保存成功' : '创建成功')
     dialogRef.value?.close()
     tableRef.value?.refresh()
-  } else {
-    ElMessage.error(data.message || '操作失败')
+  } catch (e: any) {
+    ElMessage.error(e.message || '操作失败')
   }
 }
 </script>

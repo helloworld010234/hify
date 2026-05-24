@@ -134,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -228,7 +228,6 @@ const selectTool = (tool: McpTool) => {
   }
   if (schema?.properties) {
     const props = schema.properties
-    const required = schema.required || []
     Object.entries(props).forEach(([name, config]: [string, any]) => {
       const type = config.type || 'string'
       if (type === 'boolean') {
