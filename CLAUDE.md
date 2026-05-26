@@ -337,3 +337,9 @@ ORDER BY sum_no_index_used DESC LIMIT 20;
 | P2 | 连接池耗尽 | HikariCP 配置：maximumPoolSize=20，connectionTimeout=3000ms |
 | 延后 | 静态资源未压缩 | Nginx gzip，流量大时处理 |
 | 延后 | JVM GC 停顿 | G1GC 已启用，暂不调优 |
+
+---
+
+## 测试规范与重心
+
+详见 [docs/testing.md](docs/testing.md)。
