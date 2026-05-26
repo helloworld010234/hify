@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 @Slf4j
-@Component
+@Component("commonLlmHttpClient")
 public class LlmHttpClient {
 
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
