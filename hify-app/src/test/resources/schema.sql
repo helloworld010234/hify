@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS t_agent (
     system_prompt       TEXT,
     model_config_id     BIGINT          NOT NULL,
     knowledge_base_id   BIGINT,
+    workflow_id         BIGINT,
     temperature         DECIMAL(3,2)    NOT NULL DEFAULT 0.70,
     max_tokens          INT             NOT NULL DEFAULT 2048,
     max_context_turns   INT             NOT NULL DEFAULT 10,

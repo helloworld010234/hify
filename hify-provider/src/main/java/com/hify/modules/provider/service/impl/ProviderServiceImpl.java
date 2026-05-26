@@ -76,7 +76,7 @@ public class ProviderServiceImpl implements com.hify.modules.provider.api.Provid
                         .eq(Provider::getName, request.getName())
         );
         if (nameCount > 0) {
-            throw new BizException(ErrorCode.PARAM_ERROR, "供应商名称已存在: " + request.getName());
+            throw new BizException(ErrorCode.PROVIDER_NAME_DUPLICATE, "供应商名称已存在: " + request.getName());
         }
 
         // 3. 构建实体

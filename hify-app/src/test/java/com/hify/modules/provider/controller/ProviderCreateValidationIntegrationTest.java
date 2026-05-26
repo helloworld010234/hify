@@ -59,7 +59,7 @@ class ProviderCreateValidationIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(1000))
+                .andExpect(jsonPath("$.code").value(2001))
                 .andExpect(jsonPath("$.message").value("供应商名称已存在: EXIST-PROVIDER-NAME"));
 
         Long count = jdbcTemplate.queryForObject(

@@ -28,7 +28,8 @@ public enum ErrorCode {
 
     // ========== Provider 2000-2999 ==========
     PROVIDER_NOT_FOUND(2000, "模型提供商不存在"),
-    PROVIDER_TYPE_NOT_SUPPORTED(2001, "不支持的提供商类型"),
+    PROVIDER_NAME_DUPLICATE(2001, "供应商名称已存在"),
+    PROVIDER_TYPE_NOT_SUPPORTED(2004, "不支持的提供商类型"),
     PROVIDER_CONNECTION_FAILED(2002, "提供商连接失败"),
     MODEL_CONFIG_NOT_FOUND(2003, "模型配置不存在"),
 

@@ -22,10 +22,14 @@ public interface ChatMessageMapper extends BaseMapper<ChatMessage> {
      * @return 消息列表
      */
     @Select("SELECT id, session_id, role, content, tokens, created_at, updated_at, deleted " +
-            "FROM t_chat_message " +
-            "WHERE session_id = #{sessionId} AND deleted = 0 " +
-            "ORDER BY created_at ASC " +
-            "LIMIT #{limit}")
+            "FROM (" +
+            "  SELECT id, session_id, role, content, tokens, created_at, updated_at, deleted, " +
+            "         ROW_NUMBER() OVER (ORDER BY created_at DESC) AS rn " +
+            "  FROM t_chat_message " +
+            "  WHERE session_id = #{sessionId} AND deleted = 0 " +
+            ") t " +
+            "WHERE rn <= #{limit} " +
+            "ORDER BY created_at ASC")
     List<ChatMessage> selectRecentBySessionId(@Param("sessionId") Long sessionId,
                                                @Param("limit") Integer limit);
 }
