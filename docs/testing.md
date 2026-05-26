@@ -497,3 +497,259 @@ assertThat(document.getStatus())
 | P2 | `MdcTaskWrapper.wrap` | hify-common | 2 |
 
 **总计**：约 18 个类 / 45-55 个测试方法。
+
+---
+
+## 单元测试编写规范（执行版）
+
+> 基于上文"核心链路清单""风险集中区域""测试重心建议"推导的落地规范。
+> 所有后端 Java 模块（`hify-chat`、`hify-provider`、`hify-workflow`、`hify-knowledge`、`hify-mcp`、`hify-agent`、`hify-common`）均适用。
+
+---
+
+### 1. 必须写单测的代码
+
+以下代码如果缺少单元测试，PR 禁止合并。
+
+| 优先级 | 代码类型 | 判定标准 | 当前必须覆盖的类 |
+|--------|---------|---------|----------------|
+| **P0** | 核心链路 Service 方法 | 含复杂分支（>=2 个独立逻辑分支）、状态机、并发控制 | `ChatServiceImpl`（`sendMessage`、`handleFinish`、`buildSystemPromptWithRag`、`executeToolCalls`）<br>`WorkflowEngine`（`run`、`findNextNode`、`executeNode`）<br>`LlmServiceImpl`（`resolveAdapter`） |
+| **P0** | 安全/加密相关 | 出错即红线，必须 100% 可逆 | `EncryptionService` |
+| **P0** | 纯算法/切分逻辑 | 边界条件极多，肉眼难以覆盖 | `DocumentServiceImpl.splitChunks`<br>`ChatContextAssembler.selectBySlidingWindow` |
+| **P1** | 数据转换/组装器 | 字段遗漏会产生静默错误 | `ChatContextAssembler`<br>`NodeConfigParser` |
+| **P1** | 状态流转判断 | 条件路由、有效性校验 | `ConditionNodeExecutor.evaluate`<br>`McpToolServiceImpl.findInvalidToolIds` |
+| **P2** | 纯工具类（无外部依赖） | 成本低、收益确定 | `TokenUtil.estimateTokens`<br>`MdcTaskWrapper.wrap` |
+
+**豁免规则（可跳过单测，但需有集成测试）**：
+- 仅做 CRUD 透传的 Controller（参数校验除外）
+- MyBatis-Plus 自动生成的 Mapper 方法
+- Spring 配置类（`@Configuration`）
+- 简单 POJO / DTO（无计算逻辑）
+
+---
+
+### 2. 不写单测、用集成测试替代的场景
+
+Hify 的外部依赖具有**异构性强、状态难 Mock、网络行为复杂**的特点，以下场景优先用集成测试（H2 / Testcontainers / MockServer）：
+
+| 场景 | 外部依赖 | 为什么不适合单测 | 替代方案 |
+|------|---------|-----------------|---------|
+| Provider 适配器真实 HTTP 调用 | OpenAI / Claude / Ollama API | SSE 流式行为、状态码差异难以 Mock | MockServer / WireMock |
+| pgvector 向量检索 | PostgreSQL + pgvector 扩展 | 向量运算是数据库特性，内存库无法模拟 | Testcontainers（PostgreSQL） |
+| MCP Server 工具发现与调用 | 外部 MCP HTTP 端点 | MCP SDK 内部状态机复杂，Mock 易脱节 | 本地 Mock MCP Server |
+| 文档处理全流程 | 文件系统 + Embedding API | 文件 IO + 异步线程 + 外部 API 串联 | H2 + Mock EmbeddingClient |
+| 数据库事务边界 | MySQL / H2 | 事务回滚、唯一索引冲突只能在真实 DB 验证 | `@SpringBootTest` + H2 |
+
+**判定口诀**：
+> 如果一个测试需要 Mock **3 个以上**外部依赖才能运行，或者 Mock 后测试只剩"调用了某方法"的断言，**改为集成测试**。
+
+---
+
+### 3. 测试命名规范
+
+统一采用 **`should_[期望结果]_when_[输入条件]`** 格式。
+
+```java
+// ✅ 正确
+@Test
+void should_returnEmptyChunks_when_textIsBlank() { }
+
+@Test
+void should_routeToFalseBranch_when_conditionEvaluatesToFalse() { }
+
+@Test
+void should_throwBizException_when_providerNotFound() { }
+
+// ❌ 错误
+@Test
+void testSplitChunks() { }           // 语义模糊
+@Test
+void splitChunksTest() { }            // 无 should/when
+@Test
+void shouldWork() { }                 // 期望结果不具体
+@Test
+void should_return_empty_chunks() { } // 缺少 when 条件
+```
+
+**特殊情况**：
+- 异常测试：`should_throw[异常类型]_when_[条件]`
+- 并发测试：`should_[结果]_concurrently_when_[条件]`
+- 状态流转：`should_transitionTo[目标状态]_when_[事件]`
+
+---
+
+### 4. 测试结构：Given-When-Then
+
+每个测试方法内部必须按三段式组织，用空行分隔。
+
+```java
+@Test
+void should_saveAssistantMessage_when_streamFinishesNormally() {
+    // Given
+    ChatSession session = new ChatSession();
+    session.setId(1L);
+    session.setTitle("新会话");
+
+    ChatStreamRequest request = new ChatStreamRequest();
+    request.setMessage("Hello");
+
+    StringBuilder contentBuilder = new StringBuilder("Response content");
+    AtomicBoolean finished = new AtomicBoolean(false);
+    AtomicBoolean cancelled = new AtomicBoolean(false);
+
+    when(persistenceService.saveAssistantMessage(any(), any(), any())).thenReturn(1L);
+
+    // When
+    chatService.handleFinish(emitter, session, request, contentBuilder,
+            "stop", System.currentTimeMillis(), finished, cancelled);
+
+    // Then
+    verify(persistenceService).saveAssistantMessage(eq(1L), eq("Response content"), anyInt());
+    verify(persistenceService).updateSessionTitle(eq(1L), eq("Hello"));
+    assertThat(finished).isTrue();
+}
+```
+
+**强制要求**：
+- `Given` 段负责**准备输入数据**和**配置 Mock 期望**
+- `When` 段**只放被测方法调用**，一行最佳，最多不超过 3 行
+- `Then` 段负责**断言结果** + **验证交互**（`verify`），不允许再调用被测对象
+
+---
+
+### 5. Mock 使用规范
+
+#### 必须 Mock 的场景
+
+| 场景 | 原因 | 示例 |
+|------|------|------|
+| 外部 HTTP 调用 | 不稳定、慢、有副作用 | `ProviderAdapter`, `EmbeddingClient` |
+| 数据库 Mapper（单测中） | 避免启动 Spring 上下文，保持测试快速 | `ChatMessageMapper`, `WorkflowNodeMapper` |
+| 跨模块 Service | 隔离被测单元，避免级联失败 | `AgentService`, `KnowledgeRetrievalService` |
+| 线程/时间相关 | 保证测试确定性 | `System.currentTimeMillis()`（用 `Clock` 替代） |
+
+#### 禁止 Mock 的场景
+
+| 场景 | 原因 | 正确处理 |
+|------|------|---------|
+| 被测类本身 | 失去测试意义 | 直接 new 被测实例 |
+| 简单 POJO / DTO | 无行为，Mock 增加复杂度 | `new ChatRequest()` |
+| 纯工具类（无外部依赖） | 测试的是真实逻辑，Mock 会隐藏 bug | 直接调用 |
+
+#### Mock 框架选择
+
+- **默认**：Mockito（`@ExtendWith(MockitoExtension.class)`）
+- **静态方法**：Mockito `mockStatic`（Java 17+）或 wrapper 模式
+- **禁止**：PowerMock（已停止维护，与 Java 17+ 不兼容）
+
+```java
+// ✅ 正确：构造器注入 + @InjectMocks
+@ExtendWith(MockitoExtension.class)
+class ChatServiceImplTest {
+    @Mock private LlmService llmService;
+    @Mock private McpClientService mcpClientService;
+    @InjectMocks private ChatServiceImpl chatService;
+}
+
+// ❌ 错误：@MockBean（只在集成测试中使用）
+@MockBean
+private LlmService llmService;
+```
+
+---
+
+### 6. 断言规范（AssertJ）
+
+强制使用 **AssertJ**（`org.assertj.core.api.Assertions`），禁止使用 JUnit 4 的 `Assert` 和 Hamcrest。
+
+#### 基本规则
+
+```java
+// ✅ 正确：链式断言、语义明确
+assertThat(result.getStatus()).isEqualTo("SUCCESS")
+                              .hasSize(7);
+assertThat(result.getChunks()).isNotEmpty()
+                              .hasSize(3)
+                              .extracting(ChunkDTO::getContent)
+                              .containsExactly("chunk1", "chunk2", "chunk3");
+
+// ❌ 错误：无意义断言
+assertThat(result).isNotNull();   // 除非被测方法可能返回 null，否则是废话
+assertTrue(true);                 // 永远通过
+assertEquals(expected, actual);   // JUnit 风格，错误信息不如 AssertJ 清晰
+```
+
+#### 异常断言
+
+```java
+// ✅ 正确：assertThatThrownBy + 链式验证
+assertThatThrownBy(() -> workflowEngine.run(1L, "input"))
+    .isInstanceOf(BizException.class)
+    .hasMessageContaining("缺少 START 节点")
+    .satisfies(ex -> assertThat(((BizException) ex).getErrorCode())
+        .isEqualTo(ErrorCode.PARAM_ERROR));
+
+// ❌ 错误：try-catch + fail()
+try {
+    workflowEngine.run(1L, "input");
+    fail("应该抛出异常");   // 容易遗漏
+} catch (BizException e) {
+    assertThat(e.getErrorCode()).isEqualTo(ErrorCode.PARAM_ERROR);
+}
+```
+
+#### 集合与复杂对象断言
+
+```java
+// ✅ 正确：提取字段做语义断言
+assertThat(agentList)
+    .hasSize(2)
+    .extracting(Agent::getName, Agent::getStatus)
+    .containsExactly(
+        tuple("Agent-A", "active"),
+        tuple("Agent-B", "inactive")
+    );
+
+// ✅ 正确：自定义条件
+assertThat(document.getStatus())
+    .satisfies(status -> List.of("PENDING", "PROCESSING", "DONE", "FAILED").contains(status));
+```
+
+---
+
+### 7. 禁止事项
+
+以下写法在代码审查中**一票否决**，必须修正：
+
+| 编号 | 禁止事项 | 反面示例 | 正确做法 |
+|------|---------|---------|---------|
+| **T1** | 测试方法内调用被测方法超过一次 | 在 `Given` 和 `Then` 中各调一次 | `When` 段只调用一次，结果存局部变量 |
+| **T2** | 使用 `Thread.sleep()` 等待异步结果 | `Thread.sleep(100); assertThat(...)` | 用 `CountDownLatch`、`Awaitility` 或同步 mock |
+| **T3** | 单测依赖外部真实服务 | 直接调用 OpenAI API | Mock 或移到集成测试 |
+| **T4** | 测试之间相互依赖或共享可变状态 | 静态变量累加、测试顺序敏感 | 每个测试独立，`@BeforeEach` 重置状态 |
+| **T5** | 无断言或只有 `isNotNull()` | 测完不知道验证了啥 | 至少有一个语义断言（值、状态、交互） |
+| **T6** | 使用 `@SpringBootTest` 写纯单元测试 | 启动整个容器测一个工具方法 | 纯单元测试用 `@ExtendWith(MockitoExtension.class)` |
+| **T7** | 忽略或吞掉被测方法的异常 | `catch (Exception e) { }` | 用 `assertThatThrownBy` 显式断言异常 |
+| **T8** | Mock 验证不精确 | `verify(anyService).anyMethod(any())` | `verify(exactly(1), service).specificMethod(eq(expected))` |
+| **T9** | 测试数据魔法值无注释 | `agent.setMaxTokens(4096);` | 魔法值用命名常量或注释说明业务含义 |
+| **T10** | 单测与生产代码混放或命名不规范 | 测试类放在 `main/java` 下 | 严格遵循 `src/test/java`，测试类名以 `Test` 结尾 |
+
+---
+
+### 附：测试金字塔在 Hify 的落地比例
+
+```
+      /\
+     /  \     E2E（Playwright）—— 5%  （核心对话链路冒烟）
+    /____\
+   /      \   集成测试 —— 25% （数据库事务、外部 HTTP Mock、异步管线）
+  /________\ 
+ /          \ 单元测试 —— 70% （Service 分支、工具类、状态机、加密）
+/____________\
+```
+
+**当前缺口最大的模块**（应优先补单测）：
+1. `hify-workflow`：0 个测试 → 先补 `WorkflowEngine` + `NodeExecutor`
+2. `hify-knowledge`：0 个测试 → 先补 `splitChunks` + `processDocument` 状态分支
+3. `hify-mcp`：0 个测试 → 先补 `syncTools` + `McpClientService`
+4. `hify-chat`：3 个测试 → 补工具调用两阶段 + `handleFinish` 并发安全
