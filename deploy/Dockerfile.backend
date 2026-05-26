@@ -1,15 +1,18 @@
 # ============================================
 # Hify 后端 Dockerfile
 # Maven 多模块构建，Java 17，Spring Boot 3.3.5
+# 使用 Ubuntu 基础镜像（避免 Alpine DNS 问题）
 # ============================================
 
 # ---------------- 阶段 1：依赖缓存 ----------------
-FROM eclipse-temurin:17-jdk-alpine AS deps
+FROM eclipse-temurin:17-jdk AS deps
 
 WORKDIR /build
 
+# 安装 Maven
+RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
+
 # 先单独复制所有 pom.xml，利用 Docker 层缓存
-# 依赖不变时，后续编译直接命中缓存
 COPY pom.xml .
 COPY hify-common/pom.xml hify-common/
 COPY hify-provider/pom.xml hify-provider/
@@ -21,16 +24,15 @@ COPY hify-mcp/pom.xml hify-mcp/
 COPY hify-app/pom.xml hify-app/
 
 # 下载所有依赖到本地仓库（离线模式）
-RUN apk add --no-cache maven && \
-    mvn dependency:go-offline -B -q
+RUN mvn dependency:go-offline -B -q
 
 # ---------------- 阶段 2：编译构建 ----------------
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM eclipse-temurin:17-jdk AS builder
 
 WORKDIR /build
 
 # 安装 Maven
-RUN apk add --no-cache maven
+RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
 
 # 复制已下载的依赖缓存
 COPY --from=deps /root/.m2 /root/.m2
@@ -46,48 +48,40 @@ COPY hify-workflow/ hify-workflow/
 COPY hify-mcp/ hify-mcp/
 COPY hify-app/ hify-app/
 
-# 跳过测试，打包主模块（会自动打包所有依赖模块）
-# 使用 -pl hify-app -am 确保先构建所有依赖模块
+# 跳过测试，打包主模块
 RUN mvn clean package -pl hify-app -am -DskipTests -B -q
 
-# 解压 jar，使用 Spring Boot layertools 分层，减小镜像体积
+# 解压 jar，使用 Spring Boot layertools 分层
 WORKDIR /build/hify-app/target/extracted
 RUN java -Djarmode=layertools -jar hify-app-*.jar extract
 
 # ---------------- 阶段 3：运行镜像 ----------------
-FROM eclipse-temurin:17-jre-alpine AS runtime
+FROM eclipse-temurin:17-jre AS runtime
 
 # 创建非 root 用户（安全最佳实践）
-RUN addgroup -S hify -g 1000 && \
-    adduser -S hify -u 1000 -G hify -s /sbin/nologin -D
+RUN groupadd -r hify --gid=1000 && \
+    useradd -r -g hify --uid=1000 --shell=/usr/sbin/nologin hify
 
 WORKDIR /app
 
-# 分层复制 jar 内容（利用 Docker 层缓存）
-# dependencies 层：第三方依赖，很少变化
+# 分层复制 jar 内容
 COPY --from=builder --chown=hify:hify /build/hify-app/target/extracted/dependencies/ ./
-# snapshot-dependencies 层：快照依赖
 COPY --from=builder --chown=hify:hify /build/hify-app/target/extracted/snapshot-dependencies/ ./
-# spring-boot-loader 层：Spring Boot 加载器
 COPY --from=builder --chown=hify:hify /build/hify-app/target/extracted/spring-boot-loader/ ./
-# application 层：业务代码，经常变化
 COPY --from=builder --chown=hify:hify /build/hify-app/target/extracted/application/ ./
 
 # 创建上传目录并授权
 RUN mkdir -p /app/uploads && chown -R hify:hify /app/uploads
 
-# 健康检查（Spring Boot Actuator）
-# --start-period=60s：给 Spring Boot 初始化时间，期间失败不计入重试
+# 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
 
 # 切换到非 root 用户
 USER hify
 
-# 应用端口 8080，管理端口 8081
 EXPOSE 8080 8081
 
-# 使用 -Djava.security.egd 避免容器内熵不足导致启动慢
 ENTRYPOINT ["java", \
     "-Djava.security.egd=file:/dev/./urandom", \
     "-cp", "BOOT-INF/classes:BOOT-INF/lib/*", \
