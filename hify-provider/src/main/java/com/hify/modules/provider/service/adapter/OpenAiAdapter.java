@@ -34,18 +34,26 @@ public class OpenAiAdapter extends AbstractProviderAdapter {
 
     @Override
     public List<ConnectionTestResponse.ModelInfo> listModels(Provider provider) throws IOException {
-        String baseUrl = provider.getBaseUrl().replaceAll("/+$", "");
-        String url = baseUrl + "/v1/models";
-
-        Map<String, String> headers = new HashMap<>();
-        String apiKey = provider.getApiKey();
-        if (apiKey != null && !apiKey.isBlank()) {
-            headers.put("Authorization", "Bearer " + apiKey);
-        }
+        String url = getModelsUrl(provider);
+        Map<String, String> headers = buildAuthHeaders(provider);
 
         log.debug("OpenAI adapter listing models: {}", url);
         String responseBody = httpClient.get(url, headers);
         return parseOpenAiModels(responseBody);
+    }
+
+    protected String getModelsUrl(Provider provider) {
+        return provider.getBaseUrl().replaceAll("/+$", "") + "/v1/models";
+    }
+
+    protected Map<String, String> buildAuthHeaders(Provider provider) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        String apiKey = provider.getApiKey();
+        if (apiKey != null && !apiKey.isBlank()) {
+            headers.put("Authorization", "Bearer " + apiKey);
+        }
+        return headers;
     }
 
     protected List<ConnectionTestResponse.ModelInfo> parseOpenAiModels(String responseBody) throws IOException {
@@ -65,9 +73,7 @@ public class OpenAiAdapter extends AbstractProviderAdapter {
 
     @Override
     public ChatResponse chat(Provider provider, ChatRequest request) throws IOException {
-        String baseUrl = provider.getBaseUrl().replaceAll("/+$", "");
-        String url = baseUrl + "/v1/chat/completions";
-
+        String url = getChatUrl(provider);
         Map<String, String> headers = buildAuthHeaders(provider);
         String jsonBody = buildChatRequestBody(request, false);
 
@@ -78,9 +84,7 @@ public class OpenAiAdapter extends AbstractProviderAdapter {
     @Override
     public void streamChat(Provider provider, ChatRequest request,
                            Consumer<String> onDelta, Consumer<String> onFinish) throws IOException {
-        String baseUrl = provider.getBaseUrl().replaceAll("/+$", "");
-        String url = baseUrl + "/v1/chat/completions";
-
+        String url = getChatUrl(provider);
         Map<String, String> headers = buildAuthHeaders(provider);
         String jsonBody = buildChatRequestBody(request, true);
 
@@ -126,14 +130,8 @@ public class OpenAiAdapter extends AbstractProviderAdapter {
         }
     }
 
-    protected Map<String, String> buildAuthHeaders(Provider provider) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        String apiKey = provider.getApiKey();
-        if (apiKey != null && !apiKey.isBlank()) {
-            headers.put("Authorization", "Bearer " + apiKey);
-        }
-        return headers;
+    protected String getChatUrl(Provider provider) {
+        return provider.getBaseUrl().replaceAll("/+$", "") + "/v1/chat/completions";
     }
 
     protected String buildChatRequestBody(ChatRequest request, boolean stream) throws IOException {
