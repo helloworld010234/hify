@@ -2,6 +2,7 @@ package com.hify.modules.provider.service.adapter;
 
 import com.hify.common.exception.BizException;
 import com.hify.common.exception.ErrorCode;
+import com.hify.modules.provider.service.adapter.impl.AzureOpenAiAdapter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,12 +22,14 @@ public class ProviderAdapterFactory {
     private final OpenAiCompatibleAdapter openAiCompatibleAdapter;
     private final AnthropicAdapter anthropicAdapter;
     private final OllamaAdapter ollamaAdapter;
+    private final AzureOpenAiAdapter azureOpenAiAdapter;
 
     private static final Map<String, Class<? extends ProviderAdapter>> ADAPTER_MAP = Map.of(
             "openai", OpenAiAdapter.class,
             "openai_compatible", OpenAiCompatibleAdapter.class,
             "anthropic", AnthropicAdapter.class,
-            "ollama", OllamaAdapter.class
+            "ollama", OllamaAdapter.class,
+            "azure_openai", AzureOpenAiAdapter.class
     );
 
     /**
@@ -58,6 +61,9 @@ public class ProviderAdapterFactory {
         }
         if (adapterClass == OllamaAdapter.class) {
             return ollamaAdapter;
+        }
+        if (adapterClass == AzureOpenAiAdapter.class) {
+            return azureOpenAiAdapter;
         }
 
         throw new BizException(ErrorCode.PROVIDER_TYPE_NOT_SUPPORTED, "不支持的供应商类型: " + providerType);

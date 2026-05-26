@@ -1,12 +1,12 @@
 package com.hify.modules.provider.task;
 
 import com.hify.common.util.MdcTaskWrapper;
-import com.hify.modules.provider.api.ProviderService;
 import com.hify.modules.provider.dto.response.ConnectionTestResponse;
 import com.hify.modules.provider.entity.Provider;
 import com.hify.modules.provider.entity.ProviderHealth;
 import com.hify.modules.provider.mapper.ProviderHealthMapper;
 import com.hify.modules.provider.mapper.ProviderMapper;
+import com.hify.modules.provider.service.impl.ProviderConnectionTestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,6 +22,10 @@ import java.util.concurrent.ThreadPoolExecutor;
  * <p>
  * 每分钟遍历所有 active 供应商，异步执行连通性测试，
  * 更新健康快照到 t_provider_health 表。
+ * <p>
+ * 2026-05-26 重构：不再调用 {@link com.hify.modules.provider.api.ProviderService#testConnection(Long)}，
+ * 改为调用轻量的 {@link ProviderConnectionTestService#test(Provider)}，
+ * 避免每次健康检查都触发模型同步、供应商主表更新等副作用。
  */
 @Slf4j
 @Component
@@ -29,7 +33,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class ProviderHealthCheckTask {
 
     private final ProviderMapper providerMapper;
-    private final ProviderService providerService;
+    private final ProviderConnectionTestService connectionTestService;
     private final ProviderHealthMapper healthMapper;
     private final ThreadPoolExecutor asyncExecutor;
 
@@ -51,7 +55,7 @@ public class ProviderHealthCheckTask {
     private void checkSingle(Provider provider) {
         long start = System.currentTimeMillis();
         try {
-            ConnectionTestResponse result = providerService.testConnection(provider.getId());
+            ConnectionTestResponse result = connectionTestService.test(provider);
             long latency = System.currentTimeMillis() - start;
             if (result.isSuccess()) {
                 recordSuccess(provider.getId(), latency);
