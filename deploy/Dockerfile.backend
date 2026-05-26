@@ -1,11 +1,10 @@
 # ============================================
 # Hify 后端 Dockerfile
 # Maven 多模块构建，Java 17，Spring Boot 3.3.5
-# 使用 Ubuntu 基础镜像（避免 Alpine DNS 问题）
 # ============================================
 
 # ---------------- 阶段 1：依赖缓存 ----------------
-FROM eclipse-temurin:17-jdk AS deps
+FROM openjdk:17-jdk-slim AS deps
 
 WORKDIR /build
 
@@ -27,7 +26,7 @@ COPY hify-app/pom.xml hify-app/
 RUN mvn dependency:go-offline -B -q
 
 # ---------------- 阶段 2：编译构建 ----------------
-FROM eclipse-temurin:17-jdk AS builder
+FROM openjdk:17-jdk-slim AS builder
 
 WORKDIR /build
 
@@ -56,7 +55,7 @@ WORKDIR /build/hify-app/target/extracted
 RUN java -Djarmode=layertools -jar hify-app-*.jar extract
 
 # ---------------- 阶段 3：运行镜像 ----------------
-FROM eclipse-temurin:17-jre AS runtime
+FROM openjdk:17-jre-slim AS runtime
 
 # 创建非 root 用户（安全最佳实践）
 RUN groupadd -r hify --gid=1000 && \
@@ -72,6 +71,9 @@ COPY --from=builder --chown=hify:hify /build/hify-app/target/extracted/applicati
 
 # 创建上传目录并授权
 RUN mkdir -p /app/uploads && chown -R hify:hify /app/uploads
+
+# 安装 wget（用于健康检查）
+RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
