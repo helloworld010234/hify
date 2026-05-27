@@ -1,5 +1,6 @@
 package com.hify.modules.knowledge.health;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,7 +17,7 @@ public class PgVectorHealthIndicator implements HealthIndicator {
 
     private final JdbcTemplate pgvectorJdbcTemplate;
 
-    public PgVectorHealthIndicator(JdbcTemplate pgvectorJdbcTemplate) {
+    public PgVectorHealthIndicator(@Qualifier("pgvectorJdbcTemplate") JdbcTemplate pgvectorJdbcTemplate) {
         this.pgvectorJdbcTemplate = pgvectorJdbcTemplate;
     }
 

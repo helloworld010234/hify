@@ -30,7 +30,7 @@ spring:
       host: localhost
       port: 6379
       database: 0
-      password: your_redis_password
+      password: 123456
   cache:
     type: simple
   servlet:
@@ -42,7 +42,7 @@ spring:
 pgvector:
   datasource:
     url: jdbc:postgresql://8.136.34.168:5432/myhify
-    username: postgres
+    username: myhify
     password: 123456
     driver-class-name: org.postgresql.Driver
 

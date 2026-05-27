@@ -1,7 +1,6 @@
 package com.hify.modules.knowledge.pg;
 
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,11 +20,13 @@ import java.util.List;
  */
 @Slf4j
 @Repository
-@RequiredArgsConstructor
 public class DocumentChunkRepository {
 
-    @Qualifier("pgvectorJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
+
+    public DocumentChunkRepository(@Qualifier("pgvectorJdbcTemplate") JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     @Value("${hify.rag.embedding.dimension:1024}")
     private int embeddingDimension;
