@@ -2,6 +2,7 @@ package com.hify.modules.provider.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.hify.modules.provider.entity.ModelConfig;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -39,4 +40,11 @@ public interface ModelConfigMapper extends BaseMapper<ModelConfig> {
         ORDER BY p.sort_order, m.sort_order
         """)
     List<ModelConfig> selectAllActive();
+
+    /**
+     * 物理删除指定供应商下的所有模型（含已软删除记录）
+     * <p>用于连通性测试后同步远程模型列表，避免 uk_provider_model_deleted 唯一索引冲突。
+     */
+    @Delete("DELETE FROM t_model WHERE provider_id = #{providerId}")
+    void physicalDeleteByProviderId(@Param("providerId") Long providerId);
 }

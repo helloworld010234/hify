@@ -333,22 +333,48 @@ public class ProviderServiceImpl implements com.hify.modules.provider.api.Provid
 
         // 同步远程模型列表到 t_model
         if (result.isSuccess() && result.getModels() != null && !result.getModels().isEmpty()) {
-            // 软删除该供应商下旧模型
-            modelConfigMapper.delete(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.hify.modules.provider.entity.ModelConfig>()
-                            .eq(com.hify.modules.provider.entity.ModelConfig::getProviderId, id)
+            // 获取该供应商下现有模型（含软删除），按 modelCode 索引
+            List<ModelConfig> existingModels = modelConfigMapper.selectList(
+                    new LambdaQueryWrapper<ModelConfig>()
+                            .eq(ModelConfig::getProviderId, id)
             );
-            // 插入新模型
+            Map<String, ModelConfig> existingByCode = new java.util.HashMap<>();
+            for (ModelConfig m : existingModels) {
+                existingByCode.put(m.getModelCode(), m);
+            }
+
             int sort = 0;
-            for (com.hify.modules.provider.dto.response.ConnectionTestResponse.ModelInfo mi : result.getModels()) {
-                com.hify.modules.provider.entity.ModelConfig model = new com.hify.modules.provider.entity.ModelConfig();
-                model.setProviderId(id);
-                model.setModelCode(mi.getModelCode());
-                model.setModelName(mi.getModelName());
-                model.setModelType("chat");
-                model.setStatus("active");
-                model.setSortOrder(sort++);
-                modelConfigMapper.insert(model);
+            for (ConnectionTestResponse.ModelInfo mi : result.getModels()) {
+                ModelConfig existing = existingByCode.get(mi.getModelCode());
+                if (existing != null) {
+                    // 恢复或更新现有记录，保留原 ID（避免外键引用失效）
+                    existing.setDeleted(0);
+                    existing.setModelName(mi.getModelName());
+                    existing.setStatus("active");
+                    existing.setSortOrder(sort++);
+                    modelConfigMapper.updateById(existing);
+                } else {
+                    // 插入新记录
+                    ModelConfig model = new ModelConfig();
+                    model.setProviderId(id);
+                    model.setModelCode(mi.getModelCode());
+                    model.setModelName(mi.getModelName());
+                    model.setModelType("chat");
+                    model.setStatus("active");
+                    model.setSortOrder(sort++);
+                    modelConfigMapper.insert(model);
+                }
+            }
+
+            // 软删除远程列表中不存在的本地模型
+            java.util.Set<String> remoteCodes = new java.util.HashSet<>();
+            for (ConnectionTestResponse.ModelInfo mi : result.getModels()) {
+                remoteCodes.add(mi.getModelCode());
+            }
+            for (ModelConfig existing : existingModels) {
+                if (!remoteCodes.contains(existing.getModelCode()) && existing.getDeleted() == 0) {
+                    modelConfigMapper.deleteById(existing.getId());
+                }
             }
             log.info("Provider models synced: id={}, code={}, models={}", id, provider.getCode(), result.getModels().size());
         }
