@@ -63,7 +63,7 @@ public class McpServerServiceImpl implements McpServerService {
         McpServer server = new McpServer();
         server.setName(request.getName());
         server.setEndpoint(request.getEndpoint());
-        server.setEnabled(request.getEnabled() != null ? request.getEnabled() : 1);
+        server.setEnabled(request.getEnabled() != null ? (request.getEnabled() ? 1 : 0) : 1);
         server.setStatus("unknown");
         server.setToolCount(0);
 
@@ -91,7 +91,7 @@ public class McpServerServiceImpl implements McpServerService {
         server.setName(request.getName());
         server.setEndpoint(request.getEndpoint());
         if (request.getEnabled() != null) {
-            server.setEnabled(request.getEnabled());
+            server.setEnabled(request.getEnabled() ? 1 : 0);
         }
 
         mcpServerMapper.updateById(server);

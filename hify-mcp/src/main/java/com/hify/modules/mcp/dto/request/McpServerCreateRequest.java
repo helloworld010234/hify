@@ -16,7 +16,7 @@ public class McpServerCreateRequest {
     private String endpoint;
 
     /**
-     * 是否启用：1-启用 0-禁用，默认启用
+     * 是否启用：true-启用 false-禁用，默认启用
      */
-    private Integer enabled = 1;
+    private Boolean enabled = true;
 }

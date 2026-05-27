@@ -16,7 +16,7 @@ public class McpServerUpdateRequest {
     private String endpoint;
 
     /**
-     * 是否启用：1-启用 0-禁用
+     * 是否启用：true-启用 false-禁用
      */
-    private Integer enabled;
+    private Boolean enabled;
 }
