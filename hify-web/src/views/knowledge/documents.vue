@@ -188,7 +188,7 @@ const fetchDocumentList = async () => {
       page: currentPage.value,
       size: pageSize.value
     })
-    documentList.value = res.data || []
+    documentList.value = res.list || []
     total.value = res.total || 0
   } finally {
     loading.value = false

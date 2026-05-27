@@ -11,12 +11,10 @@ export interface TableColumn<T = any> {
 }
 
 export interface PageData<T = any> {
-  code: number
-  message: string
-  data: T[]
+  list: T[]
   total: number
   page: number
-  size: number
+  pageSize: number
 }
 
 interface Props<T> {
@@ -42,7 +40,7 @@ const fetchData = async () => {
       page: currentPage.value,
       size: pageSize.value
     })
-    tableData.value = res.data || []
+    tableData.value = res.list || []
     total.value = res.total || 0
   } finally {
     loading.value = false

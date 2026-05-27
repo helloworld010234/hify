@@ -41,12 +41,10 @@ export interface ProviderListItem {
 }
 
 export interface PageData<T> {
-  code: number
-  message: string
-  data: T[]
+  list: T[]
   total: number
   page: number
-  size: number
+  pageSize: number
 }
 
 export interface ConnectionTestResult {

@@ -1,5 +1,4 @@
 import { get, post, put, del, patch } from '@/utils/request'
-import axios from 'axios'
 
 export interface Agent {
   id?: number
@@ -54,17 +53,15 @@ export interface ToolOption {
 }
 
 export interface PageData<T> {
-  code: number
-  message: string
-  data: T[]
+  list: T[]
   total: number
   page: number
-  size: number
+  pageSize: number
 }
 
 /** 分页获取 Agent 列表 */
 export function getAgentList(params: { page: number; size: number; keyword?: string; enabled?: number; modelConfigId?: number }) {
-  return axios.get('/api/v1/agents', { params }).then(res => res.data as PageData<AgentListItem>)
+  return get<PageData<AgentListItem>>('/v1/agents', params)
 }
 
 /** 创建 Agent */

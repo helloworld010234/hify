@@ -1,5 +1,4 @@
 import { get, post, del } from '@/utils/request'
-import axios from 'axios'
 
 export interface KnowledgeBase {
   id?: number
@@ -39,17 +38,15 @@ export interface DocumentChunkItem {
 }
 
 export interface PageData<T> {
-  code: number
-  message: string
-  data: T[]
+  list: T[]
   total: number
   page: number
-  size: number
+  pageSize: number
 }
 
 /** 分页获取知识库列表 */
 export function getKnowledgeBaseList(params: { page: number; size: number; name?: string }) {
-  return axios.get('/api/v1/knowledge-bases', { params }).then(res => res.data as PageData<KnowledgeBaseItem>)
+  return get<PageData<KnowledgeBaseItem>>('/v1/knowledge-bases', params)
 }
 
 /** 创建知识库 */
@@ -76,7 +73,7 @@ export function getKnowledgeBaseDetail(id: number) {
 
 /** 分页获取知识库下的文档列表 */
 export function getDocumentList(kbId: number, params: { page: number; size: number }) {
-  return axios.get(`/api/v1/knowledge-bases/${kbId}/documents`, { params }).then(res => res.data as PageData<DocumentItem>)
+  return get<PageData<DocumentItem>>(`/v1/knowledge-bases/${kbId}/documents`, params)
 }
 
 /** 上传文档 */

@@ -36,12 +36,10 @@ export interface McpDebugResponse {
 }
 
 export interface PageData<T> {
-  code: number
-  message: string
-  data: T[]
+  list: T[]
   total: number
   page: number
-  size: number
+  pageSize: number
 }
 
 /** 分页获取 MCP Server 列表 */
@@ -51,12 +49,20 @@ export function getMcpServerList(params: { page: number; size: number; keyword?:
 
 /** 创建 MCP Server */
 export function createMcpServer(data: { name: string; endpoint: string; enabled?: boolean }) {
-  return post<number>('/v1/mcp-servers', data)
+  const payload = {
+    ...data,
+    enabled: data.enabled === undefined ? 1 : (data.enabled ? 1 : 0)
+  }
+  return post<number>('/v1/mcp-servers', payload)
 }
 
 /** 更新 MCP Server */
 export function updateMcpServer(id: number, data: { name: string; endpoint: string; enabled?: boolean }) {
-  return put<void>(`/v1/mcp-servers/${id}`, data)
+  const payload = {
+    ...data,
+    enabled: data.enabled === undefined ? undefined : (data.enabled ? 1 : 0)
+  }
+  return put<void>(`/v1/mcp-servers/${id}`, payload)
 }
 
 /** 删除 MCP Server */

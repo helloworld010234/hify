@@ -1,5 +1,4 @@
-import { post, del } from '@/utils/request'
-import axios from 'axios'
+import { get, post, del } from '@/utils/request'
 
 export interface WorkflowListItem {
   id: number
@@ -12,12 +11,10 @@ export interface WorkflowListItem {
 }
 
 export interface PageData<T> {
-  code: number
-  message: string
-  data: T[]
+  list: T[]
   total: number
   page: number
-  size: number
+  pageSize: number
 }
 
 export interface WorkflowCreatePayload {
@@ -30,7 +27,7 @@ export interface WorkflowCreatePayload {
 
 /** 分页获取工作流列表 */
 export function getWorkflowList(params: { page: number; size: number; keyword?: string; enabled?: number }) {
-  return axios.get('/api/v1/workflows', { params }).then(res => res.data as PageData<WorkflowListItem>)
+  return get<PageData<WorkflowListItem>>('/v1/workflows', params)
 }
 
 /** 创建工作流 */
