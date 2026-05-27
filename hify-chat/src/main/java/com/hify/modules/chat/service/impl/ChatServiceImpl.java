@@ -91,20 +91,29 @@ public class ChatServiceImpl implements ChatService {
             ChatSession session = validateSession(sessionId);
             AgentDetailResponse agent = validateAgent(session.getAgentId());
 
+            log.info("action=chat_request sessionId={} agentId={} agentName={} messageLength={} hasTools={}",
+                    sessionId, agent.getId(), agent.getName(),
+                    request.getMessage().length(),
+                    agent.getToolIds() != null && !agent.getToolIds().isEmpty());
+
             persistenceService.saveUserMessage(sessionId, request.getMessage());
 
             // 若 Agent 绑定了工作流，走同步工作流执行，不走 LLM 流式
             Long workflowId = agent.getWorkflowId();
             if (workflowId != null) {
                 try {
+                    log.info("action=workflow_start sessionId={} workflowId={}", sessionId, workflowId);
                     String output = workflowRunService.run(workflowId, request.getMessage());
                     int tokens = TokenUtil.estimateTokens(output);
                     persistenceService.saveAssistantMessage(session.getId(), output, tokens);
                     long latency = System.currentTimeMillis() - startTime;
+                    log.info("action=workflow_end sessionId={} workflowId={} durationMs={} tokens={}",
+                            sessionId, workflowId, latency, tokens);
                     sendEvent(emitter, ChatStreamEvent.done("stop", latency));
                     completeEmitter(emitter);
                 } catch (BizException e) {
-                    log.error("Workflow execution failed, workflowId={}", workflowId, e);
+                    log.error("action=workflow_error sessionId={} workflowId={} error={}",
+                            sessionId, workflowId, e.getMessage(), e);
                     sendEvent(emitter, ChatStreamEvent.error("WORKFLOW_ERROR", e.getMessage()));
                     completeEmitterWithError(emitter, e);
                 }
@@ -304,11 +313,16 @@ public class ChatServiceImpl implements ChatService {
 
             Long serverId = toolContext.nameToServerId.get(name);
             String toolResult;
+            long toolStart = System.currentTimeMillis();
             try {
+                log.info("action=tool_call_start name={} serverId={} toolCallId={}", name, serverId, id);
                 Map<String, Object> arguments = objectMapper.readValue(argumentsJson, new TypeReference<Map<String, Object>>() {});
                 toolResult = mcpClientService.callTool(serverId, name, arguments);
+                log.info("action=tool_call_end name={} serverId={} toolCallId={} durationMs={} success=true",
+                        name, serverId, id, System.currentTimeMillis() - toolStart);
             } catch (Exception e) {
-                log.error("MCP tool call failed in chat: name={}, serverId={}", name, serverId, e);
+                log.warn("action=tool_call_error name={} serverId={} toolCallId={} durationMs={} error={}",
+                        name, serverId, id, System.currentTimeMillis() - toolStart, e.getMessage());
                 toolResult = "工具调用失败: " + e.getMessage();
             }
 
@@ -359,6 +373,9 @@ public class ChatServiceImpl implements ChatService {
             String title = truncateTitle(request.getMessage());
             persistenceService.updateSessionTitle(session.getId(), title);
         }
+
+        log.info("action=chat_stream_end sessionId={} finishReason={} durationMs={} tokens={} contentLength={}",
+                session.getId(), finishReason, latency, tokens, fullContent.length());
 
         sendEvent(emitter, ChatStreamEvent.done(finishReason, latency));
         completeEmitter(emitter);

@@ -38,16 +38,43 @@ public class LlmServiceImpl implements LlmService {
     @CircuitBreaker(name = "llm-default")
     @Retry(name = "timeout-retry")
     public ChatResponse chat(Long modelConfigId, ChatRequest request) throws IOException {
-        ProviderAdapter adapter = resolveAdapter(modelConfigId, request);
-        return adapter.chat(resolveProvider(modelConfigId), request);
+        log.info("action=llm_chat_start modelConfigId={} model={}", modelConfigId, request.getModel());
+        long start = System.currentTimeMillis();
+        try {
+            ProviderAdapter adapter = resolveAdapter(modelConfigId, request);
+            ChatResponse response = adapter.chat(resolveProvider(modelConfigId), request);
+            log.info("action=llm_chat_end modelConfigId={} model={} durationMs={} finishReason={}",
+                    modelConfigId, request.getModel(), System.currentTimeMillis() - start, response.getFinishReason());
+            return response;
+        } catch (Exception e) {
+            log.warn("action=llm_chat_error modelConfigId={} model={} durationMs={} error={}",
+                    modelConfigId, request.getModel(), System.currentTimeMillis() - start, e.getMessage());
+            throw e;
+        }
     }
 
     @Override
     @CircuitBreaker(name = "llm-default")
     public void streamChat(Long modelConfigId, ChatRequest request,
                            Consumer<String> onDelta, Consumer<String> onFinish) throws IOException {
-        ProviderAdapter adapter = resolveAdapter(modelConfigId, request);
-        adapter.streamChat(resolveProvider(modelConfigId), request, onDelta, onFinish);
+        log.info("action=llm_stream_start modelConfigId={} model={}", modelConfigId, request.getModel());
+        long start = System.currentTimeMillis();
+        try {
+            ProviderAdapter adapter = resolveAdapter(modelConfigId, request);
+            adapter.streamChat(resolveProvider(modelConfigId), request,
+                    delta -> {
+                        onDelta.accept(delta);
+                    },
+                    finishReason -> {
+                        log.info("action=llm_stream_end modelConfigId={} model={} durationMs={} finishReason={}",
+                                modelConfigId, request.getModel(), System.currentTimeMillis() - start, finishReason);
+                        onFinish.accept(finishReason);
+                    });
+        } catch (Exception e) {
+            log.warn("action=llm_stream_error modelConfigId={} model={} durationMs={} error={}",
+                    modelConfigId, request.getModel(), System.currentTimeMillis() - start, e.getMessage());
+            throw e;
+        }
     }
 
     private ProviderAdapter resolveAdapter(Long modelConfigId, ChatRequest request) {

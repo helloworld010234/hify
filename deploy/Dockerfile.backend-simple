@@ -1,0 +1,33 @@
+# 简化版后端 Dockerfile（使用预编译 jar）
+FROM openjdk:17-jdk-slim AS builder
+
+WORKDIR /build
+COPY hify-app/target/hify-app-1.0.0-SNAPSHOT.jar app.jar
+RUN java -Djarmode=layertools -jar app.jar extract
+
+FROM openjdk:17-jre-slim AS runtime
+
+RUN groupadd -r hify --gid=1000 && \
+    useradd -r -g hify --uid=1000 --shell=/usr/sbin/nologin hify
+
+WORKDIR /app
+
+COPY --from=builder --chown=hify:hify /build/dependencies/ ./
+COPY --from=builder --chown=hify:hify /build/snapshot-dependencies/ ./
+COPY --from=builder --chown=hify:hify /build/spring-boot-loader/ ./
+COPY --from=builder --chown=hify:hify /build/application/ ./
+
+RUN mkdir -p /app/uploads && chown -R hify:hify /app/uploads
+RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+
+USER hify
+
+EXPOSE 8080 8081
+
+ENTRYPOINT ["java", \
+    "-Djava.security.egd=file:/dev/./urandom", \
+    "-cp", "BOOT-INF/classes:BOOT-INF/lib/*", \
+    "com.hify.HifyApplication"]
