@@ -20,6 +20,7 @@ import com.hify.modules.chat.mapper.ChatSessionMapper;
 import com.hify.modules.mcp.api.McpClientService;
 import com.hify.common.service.mcp.McpToolService;
 import com.hify.common.service.mcp.McpToolDefinition;
+import com.hify.common.metrics.HifyMetrics;
 import com.hify.common.util.MdcTaskWrapper;
 import com.hify.modules.provider.api.LlmService;
 import com.hify.modules.provider.dto.chat.ChatRequest;
@@ -66,6 +67,7 @@ public class ChatServiceImpl implements ChatService {
     private final McpClientService mcpClientService;
     private final WorkflowRunService workflowRunService;
     private final ThreadPoolExecutor llmStreamExecutor;
+    private final HifyMetrics metrics;
 
     @Override
     public ChatSessionResponse createSession(Long agentId) {
@@ -90,6 +92,7 @@ public class ChatServiceImpl implements ChatService {
         try {
             ChatSession session = validateSession(sessionId);
             AgentDetailResponse agent = validateAgent(session.getAgentId());
+            metrics.chatRequestIncrement(agent.getId().toString());
 
             log.info("action=chat_request sessionId={} agentId={} agentName={} messageLength={} hasTools={}",
                     sessionId, agent.getId(), agent.getName(),
@@ -182,8 +185,10 @@ public class ChatServiceImpl implements ChatService {
             }
 
         } catch (IOException e) {
+            metrics.chatRequestDuration(sessionId.toString(), System.currentTimeMillis() - startTime);
             handleIoException(emitter, e, cancelled, startTime);
         } catch (Exception e) {
+            metrics.chatRequestDuration(sessionId.toString(), System.currentTimeMillis() - startTime);
             handleUnexpectedException(emitter, e, startTime);
         }
     }
@@ -377,6 +382,7 @@ public class ChatServiceImpl implements ChatService {
         log.info("action=chat_stream_end sessionId={} finishReason={} durationMs={} tokens={} contentLength={}",
                 session.getId(), finishReason, latency, tokens, fullContent.length());
 
+        metrics.chatRequestDuration(session.getId().toString(), latency);
         sendEvent(emitter, ChatStreamEvent.done(finishReason, latency));
         completeEmitter(emitter);
     }

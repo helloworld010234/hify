@@ -2,6 +2,7 @@ package com.hify.modules.mcp.service.impl;
 
 import com.hify.common.exception.BizException;
 import com.hify.common.exception.ErrorCode;
+import com.hify.common.metrics.HifyMetrics;
 import com.hify.modules.mcp.api.McpClientService;
 import com.hify.modules.mcp.entity.McpServer;
 import com.hify.modules.mcp.mapper.McpServerMapper;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 public class McpClientServiceImpl implements com.hify.modules.mcp.api.McpClientService {
 
     private final McpServerMapper mcpServerMapper;
+    private final HifyMetrics metrics;
 
     @Override
     public String callTool(Long mcpServerId, String toolName, Map<String, Object> arguments) {
@@ -34,15 +36,22 @@ public class McpClientServiceImpl implements com.hify.modules.mcp.api.McpClientS
             throw new BizException(ErrorCode.MCP_SERVER_NOT_FOUND, "MCP Server 不存在: " + mcpServerId);
         }
 
+        long start = System.currentTimeMillis();
+        boolean success = false;
         try (McpClientResource client = createClient(server)) {
             client.getClient().initialize();
             McpSchema.CallToolResult result = client.getClient().callTool(new McpSchema.CallToolRequest(toolName, arguments));
+            success = true;
             return extractText(result);
         } catch (BizException e) {
             throw e;
         } catch (Exception e) {
             log.error("MCP tool call failed: serverId={}, toolName={}", mcpServerId, toolName, e);
             throw new BizException(ErrorCode.MCP_TOOL_CALL_FAILED, "工具调用失败: " + e.getMessage(), e);
+        } finally {
+            long duration = System.currentTimeMillis() - start;
+            metrics.mcpToolCallIncrement(toolName, success);
+            metrics.mcpToolCallDuration(toolName, duration);
         }
     }
 
