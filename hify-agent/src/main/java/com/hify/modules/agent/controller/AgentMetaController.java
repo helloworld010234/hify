@@ -18,7 +18,7 @@ import java.util.List;
  * 单独拆出避免与 /agents/{id} 的路径冲突。
  */
 @RestController
-@RequestMapping("/api/v1/agents")
+@RequestMapping("/api/v1/agent-meta")
 @RequiredArgsConstructor
 public class AgentMetaController {
 
