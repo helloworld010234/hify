@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted } from 'vue'
 import { ElMessage, ElButton, ElInput, ElTag } from 'element-plus'
+import { Close, Position, RefreshRight } from '@element-plus/icons-vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { chatApi } from '../../api/chat'
@@ -17,12 +18,14 @@ function renderMarkdown(content: string): string {
   return DOMPurify.sanitize(rawHtml)
 }
 
+type SessionStatus = 'creating' | 'ready' | 'failed'
+type AssistantMessageStatus = 'loading' | 'streaming' | 'done' | 'stopped' | 'error'
+
 interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
-  loading?: boolean
-  isError?: boolean
-  /** 缓存 Markdown 渲染结果，避免历史消息重复解析 */
+  status?: AssistantMessageStatus
+  errorMessage?: string
   htmlContent?: string
 }
 
@@ -32,8 +35,10 @@ const isSending = ref(false)
 const messageListRef = ref<HTMLDivElement>()
 const sessionId = ref('')
 const currentAbortController = ref<AbortController | null>(null)
+const sessionStatus = ref<SessionStatus>('creating')
+const sessionError = ref('')
+const stoppingMessageIndex = ref<number | null>(null)
 
-// 自动滚到底
 function scrollToBottom() {
   nextTick(() => {
     const el = messageListRef.value
@@ -43,7 +48,18 @@ function scrollToBottom() {
   })
 }
 
-// 发送键处理
+function finishSending() {
+  isSending.value = false
+  currentAbortController.value = null
+  stoppingMessageIndex.value = null
+}
+
+function handleStop() {
+  if (!isSending.value || !currentAbortController.value) return
+  stoppingMessageIndex.value = messages.value.length - 1
+  currentAbortController.value.abort()
+}
+
 function handleKeydown(e: Event | KeyboardEvent) {
   const ke = e as KeyboardEvent
   if (ke.key === 'Enter' && !ke.shiftKey) {
@@ -52,33 +68,24 @@ function handleKeydown(e: Event | KeyboardEvent) {
   }
 }
 
-// 核心：发送消息的完整时间线
 async function handleSend() {
   const content = inputText.value.trim()
   if (!content || isSending.value) return
 
-  // 必须已存在 sessionId（从 URL 或 localStorage 获取）
-  if (!sessionId.value) {
-    ElMessage.warning('请先创建或选择会话')
+  if (sessionStatus.value !== 'ready' || !sessionId.value) {
+    ElMessage.warning('会话准备完成后再发送消息')
     return
   }
 
-  // 1. 输入框立刻清空
   inputText.value = ''
-
-  // 2. 用户气泡靠右出现
   messages.value.push({ role: 'user', content })
   scrollToBottom()
 
-  // 3. AI 气泡靠左，显示加载动画
   const aiIndex = messages.value.length
-  messages.value.push({ role: 'assistant', content: '', loading: true })
+  messages.value.push({ role: 'assistant', content: '', status: 'loading' })
   scrollToBottom()
 
-  // 4. 发送按钮置为不可点击
   isSending.value = true
-
-  // 准备可中断的流
   const abortController = new AbortController()
   currentAbortController.value = abortController
 
@@ -87,116 +94,150 @@ async function handleSend() {
       sessionId.value,
       { message: content },
       {
-        // delta chunk 逐字追加
         onDelta: (delta: string) => {
           const aiMsg = messages.value[aiIndex]
           if (!aiMsg) return
           aiMsg.content += delta
-          // 首次收到内容时关闭 loading 动画，开始显示文字
-          if (aiMsg.loading) {
-            aiMsg.loading = false
-          }
+          aiMsg.status = 'streaming'
           scrollToBottom()
         },
-        // done 事件：关闭 loading，恢复按钮，缓存渲染结果
         onDone: (data: ChatStreamEvent) => {
           const aiMsg = messages.value[aiIndex]
           if (!aiMsg) return
-          aiMsg.loading = false
+          aiMsg.status = 'done'
           aiMsg.htmlContent = renderMarkdown(aiMsg.content)
-          isSending.value = false
-          currentAbortController.value = null
+          finishSending()
           if (data.latencyMs !== undefined) {
-            // 可选：显示耗时
             console.log('Latency:', data.latencyMs, 'ms')
           }
         },
-        // error 事件：AI 气泡显示红色错误，恢复按钮
         onError: (data: ChatStreamEvent) => {
           const aiMsg = messages.value[aiIndex]
           if (!aiMsg) return
-          aiMsg.loading = false
-          aiMsg.isError = true
-          aiMsg.content = data.message || data.content || '流式响应出错'
-          isSending.value = false
-          currentAbortController.value = null
-          ElMessage.error(aiMsg.content)
+          aiMsg.status = 'error'
+          aiMsg.errorMessage = data.message || data.content || '流式响应出错'
+          aiMsg.content = aiMsg.errorMessage
+          finishSending()
+          ElMessage.error(aiMsg.errorMessage)
         },
       },
       abortController.signal
     )
   } catch (err: any) {
-    // fetch 异常 / HTTP 失败
     const aiMsg = messages.value[aiIndex]
+    const isAbort = err?.name === 'AbortError'
+
     if (aiMsg) {
-      aiMsg.loading = false
-      aiMsg.isError = true
-      aiMsg.content = err.message || '发送失败，请稍后重试'
+      if (isAbort && stoppingMessageIndex.value === aiIndex) {
+        aiMsg.status = 'stopped'
+        if (!aiMsg.content) {
+          aiMsg.content = '已停止生成'
+        }
+        aiMsg.htmlContent = renderMarkdown(aiMsg.content)
+      } else {
+        aiMsg.status = 'error'
+        const errorMessage = err.message || '发送失败，请稍后重试'
+        aiMsg.errorMessage = errorMessage
+        aiMsg.content = errorMessage
+        ElMessage.error(errorMessage)
+      }
     }
-    isSending.value = false
-    currentAbortController.value = null
-    ElMessage.error(err.message || '发送失败')
+
+    finishSending()
   }
 }
 
-// 初始化 sessionId（优先 URL query，其次 localStorage，都没有则自动创建）
-onMounted(async () => {
-  const urlParams = new URLSearchParams(window.location.search)
-  const sid = urlParams.get('sessionId') || localStorage.getItem('chatSessionId')
-  if (sid) {
-    sessionId.value = sid
-    return
+async function initializeSession(forceNew = false) {
+  sessionStatus.value = 'creating'
+  sessionError.value = ''
+
+  if (!forceNew) {
+    const urlParams = new URLSearchParams(window.location.search)
+    const sid = urlParams.get('sessionId') || localStorage.getItem('chatSessionId')
+    if (sid) {
+      sessionId.value = sid
+      sessionStatus.value = 'ready'
+      return
+    }
   }
 
   try {
     const data = await chatApi.createSession(6)
     sessionId.value = String(data.id || data.data?.id || '')
-    if (sessionId.value) {
-      localStorage.setItem('chatSessionId', sessionId.value)
+    if (!sessionId.value) {
+      throw new Error('创建会话接口未返回 sessionId')
     }
+    localStorage.setItem('chatSessionId', sessionId.value)
+    sessionStatus.value = 'ready'
   } catch (e: any) {
-    ElMessage.error('创建会话失败: ' + (e.message || ''))
+    sessionId.value = ''
+    sessionStatus.value = 'failed'
+    sessionError.value = e.message || '创建会话失败'
+    ElMessage.error('创建会话失败: ' + sessionError.value)
   }
+}
+
+function retryCreateSession() {
+  localStorage.removeItem('chatSessionId')
+  initializeSession(true)
+}
+
+onMounted(() => {
+  initializeSession()
 })
 </script>
 
 <template>
   <div class="chat-page">
-    <!-- 顶部栏：显示当前 SessionId -->
     <div class="chat-header">
-      <el-tag type="info" size="small">Session: {{ sessionId || '创建中…' }}</el-tag>
+      <div class="session-state">
+        <el-tag v-if="sessionStatus === 'creating'" type="info" size="small">会话创建中</el-tag>
+        <el-tag v-else-if="sessionStatus === 'failed'" type="danger" size="small">会话创建失败</el-tag>
+        <el-tag v-else type="success" size="small">Session: {{ sessionId }}</el-tag>
+        <span v-if="sessionStatus === 'failed'" class="session-error">{{ sessionError }}</span>
+      </div>
+      <el-button
+        v-if="sessionStatus === 'failed'"
+        size="small"
+        type="primary"
+        :icon="RefreshRight"
+        @click="retryCreateSession"
+      >
+        重试
+      </el-button>
     </div>
 
-    <!-- 消息列表 -->
-    <div class="message-list" ref="messageListRef">
+    <div ref="messageListRef" class="message-list">
+      <div v-if="sessionStatus === 'ready' && messages.length === 0" class="empty-state">
+        <div class="empty-title">当前会话已准备好</div>
+        <div class="empty-subtitle">输入消息后即可开始对话。</div>
+      </div>
+
       <template v-for="(msg, _index) in messages" :key="_index">
         <div :class="['message-row', msg.role]">
           <div class="message-bubble">
-            <!-- 加载动画 -->
-            <template v-if="msg.loading">
-              <div class="loading-dots">
+            <template v-if="msg.status === 'loading'">
+              <div class="loading-dots" aria-label="助手正在思考">
                 <span></span>
                 <span></span>
                 <span></span>
               </div>
             </template>
-            <!-- 错误提示 -->
-            <template v-else-if="msg.isError">
-              <div class="message-error">{{ msg.content }}</div>
+            <template v-else-if="msg.status === 'error'">
+              <div class="message-error">{{ msg.errorMessage || msg.content }}</div>
             </template>
-            <!-- 正常内容 -->
             <template v-else>
-              <!-- 用户消息：纯文本 -->
               <pre v-if="msg.role === 'user'" class="message-content">{{ msg.content }}</pre>
-              <!-- AI 消息：Markdown 渲染（优先使用缓存） -->
-              <div v-else class="markdown-body" v-html="msg.htmlContent ?? renderMarkdown(msg.content)"></div>
+              <div v-else>
+                <div class="markdown-body" v-html="msg.htmlContent ?? renderMarkdown(msg.content)"></div>
+                <div v-if="msg.status === 'stopped'" class="message-meta">已停止生成</div>
+              </div>
             </template>
           </div>
         </div>
       </template>
     </div>
 
-    <!-- 输入区域 -->
     <div class="input-area">
       <el-input
         v-model="inputText"
@@ -204,16 +245,17 @@ onMounted(async () => {
         :rows="3"
         resize="none"
         placeholder="输入消息，Enter 发送，Shift+Enter 换行"
-        :disabled="isSending"
+        :disabled="isSending || sessionStatus !== 'ready'"
         @keydown="handleKeydown"
       />
       <el-button
-        type="primary"
+        :type="isSending ? 'danger' : 'primary'"
         class="send-btn"
-        :disabled="!inputText.trim() || isSending"
-        @click="handleSend"
+        :icon="isSending ? Close : Position"
+        :disabled="(!isSending && !inputText.trim()) || sessionStatus !== 'ready'"
+        @click="isSending ? handleStop() : handleSend()"
       >
-        {{ isSending ? '发送中…' : '发送' }}
+        {{ isSending ? '停止' : '发送' }}
       </el-button>
     </div>
   </div>
@@ -223,24 +265,62 @@ onMounted(async () => {
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  background-color: #f5f5f5;
+  height: calc(100vh - 48px);
+  min-height: 560px;
+  background-color: var(--color-bg-subtle);
 }
 
 .chat-header {
-  padding: 8px 16px;
-  background-color: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border-default);
   flex-shrink: 0;
+}
+
+.session-state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.session-error {
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
+}
+
+.empty-state {
+  margin: auto;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.empty-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+}
+
+.empty-subtitle {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
 }
 
 .message-row {
@@ -257,25 +337,25 @@ onMounted(async () => {
 }
 
 .message-bubble {
-  max-width: 70%;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 14px;
+  max-width: min(72%, 760px);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
   line-height: 1.6;
   word-break: break-word;
 }
 
 .message-row.user .message-bubble {
-  background-color: #409eff;
-  color: #fff;
-  border-bottom-right-radius: 4px;
+  background-color: var(--color-primary-500);
+  color: var(--color-text-inverse);
+  border-bottom-right-radius: var(--radius-sm);
 }
 
 .message-row.assistant .message-bubble {
-  background-color: #fff;
-  color: #303133;
-  border: 1px solid #e4e7ed;
-  border-bottom-left-radius: 4px;
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-default);
+  border-bottom-left-radius: var(--radius-sm);
 }
 
 .message-content {
@@ -285,10 +365,15 @@ onMounted(async () => {
 }
 
 .message-error {
-  color: #f56c6c;
+  color: var(--color-error);
 }
 
-/* 加载动画 */
+.message-meta {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
 .loading-dots {
   display: flex;
   gap: 6px;
@@ -300,7 +385,7 @@ onMounted(async () => {
   display: inline-block;
   width: 8px;
   height: 8px;
-  background-color: #909399;
+  background-color: var(--color-text-tertiary);
   border-radius: 50%;
   animation: bounce 1.4s infinite ease-in-out both;
 }
@@ -314,7 +399,9 @@ onMounted(async () => {
 }
 
 @keyframes bounce {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0);
   }
   40% {
@@ -322,13 +409,12 @@ onMounted(async () => {
   }
 }
 
-/* 输入区域 */
 .input-area {
   display: flex;
-  gap: 12px;
-  padding: 12px 16px;
-  background-color: #fff;
-  border-top: 1px solid #e4e7ed;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-bg-elevated);
+  border-top: 1px solid var(--color-border-default);
   flex-shrink: 0;
 }
 
@@ -338,9 +424,9 @@ onMounted(async () => {
 
 .send-btn {
   align-self: flex-end;
+  min-width: 88px;
 }
 
-/* Markdown 渲染样式 */
 .markdown-body {
   line-height: 1.6;
 }
@@ -360,21 +446,21 @@ onMounted(async () => {
 
 .markdown-body :deep(pre) {
   margin: 8px 0;
-  padding: 12px 16px;
-  background-color: #f6f8fa;
-  border-radius: 6px;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-bg-muted);
+  border-radius: var(--radius-md);
   overflow-x: auto;
   font-family: Consolas, Monaco, 'Courier New', monospace;
-  font-size: 13px;
+  font-size: var(--text-xs);
   line-height: 1.5;
 }
 
 .markdown-body :deep(code) {
   font-family: Consolas, Monaco, 'Courier New', monospace;
-  font-size: 13px;
-  background-color: #f0f0f0;
+  font-size: var(--text-xs);
+  background-color: var(--color-bg-muted);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .markdown-body :deep(pre code) {
@@ -392,8 +478,8 @@ onMounted(async () => {
 .markdown-body :deep(blockquote) {
   margin: 8px 0;
   padding-left: 12px;
-  border-left: 4px solid #dcdfe6;
-  color: #606266;
+  border-left: 4px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
 }
 
 .markdown-body :deep(table) {
@@ -403,13 +489,32 @@ onMounted(async () => {
 
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--color-border-strong);
   padding: 6px 12px;
 }
 
 .markdown-body :deep(hr) {
   border: none;
-  border-top: 1px solid #e4e7ed;
+  border-top: 1px solid var(--color-border-default);
   margin: 12px 0;
+}
+
+@media (max-width: 720px) {
+  .chat-page {
+    height: calc(100vh - 32px);
+    min-height: 520px;
+  }
+
+  .message-bubble {
+    max-width: 88%;
+  }
+
+  .input-area {
+    flex-direction: column;
+  }
+
+  .send-btn {
+    align-self: stretch;
+  }
 }
 </style>
