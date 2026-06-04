@@ -1,3 +1,4 @@
+import axios, { type AxiosResponse } from 'axios'
 import { get, post, del } from '@/utils/request'
 
 export interface KnowledgeBase {
@@ -82,7 +83,7 @@ export function uploadDocument(kbId: number, file: File) {
   formData.append('file', file)
   return axios.post(`/api/v1/knowledge-bases/${kbId}/documents`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
-  }).then(res => res.data)
+  }).then((res: AxiosResponse) => res.data)
 }
 
 /** 获取文档详情（用于轮询状态） */

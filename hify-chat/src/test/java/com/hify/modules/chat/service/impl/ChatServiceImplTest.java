@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hify.common.exception.BizException;
 import com.hify.common.exception.ErrorCode;
+import com.hify.common.metrics.HifyMetrics;
 import com.hify.common.service.mcp.McpToolDefinition;
 import com.hify.common.service.mcp.McpToolService;
 
@@ -89,6 +90,9 @@ class ChatServiceImplTest {
 
     @Mock
     private ThreadPoolExecutor llmStreamExecutor;
+
+    @Mock
+    private HifyMetrics metrics;
 
     @InjectMocks
     private ChatServiceImpl chatService;

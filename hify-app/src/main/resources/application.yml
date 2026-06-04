@@ -21,8 +21,8 @@ spring:
   datasource:
     # 主数据源：MySQL（MyBatis-Plus 自动使用）
     url: jdbc:mysql://localhost:3306/hify?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   data:
@@ -30,7 +30,7 @@ spring:
       host: localhost
       port: 6379
       database: 0
-      password: 123456
+      password: ${REDIS_PASSWORD:123456}
   cache:
     type: simple
   servlet:
@@ -41,9 +41,9 @@ spring:
 # 第二数据源：PostgreSQL / pgvector（手动配置，不影响主数据源自动配置）
 pgvector:
   datasource:
-    url: jdbc:postgresql://8.136.34.168:5432/myhify
-    username: myhify
-    password: 123456
+    url: ${PGVECTOR_DATASOURCE_URL:jdbc:postgresql://localhost:5432/hify}
+    username: ${PGVECTOR_DATASOURCE_USERNAME:hify}
+    password: ${PGVECTOR_DATASOURCE_PASSWORD:123456}
     driver-class-name: org.postgresql.Driver
 
 # RAG 知识库配置
