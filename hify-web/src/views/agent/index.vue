@@ -16,6 +16,7 @@
           placeholder="搜索 Agent 名称"
           clearable
           style="width: 240px"
+          @clear="tableRef?.refresh()"
         />
       </template>
 
@@ -285,6 +286,8 @@ const handleSubmit = async (data: any) => {
     tableRef.value?.refresh()
   } catch (e: any) {
     // request interceptor 已显示错误
+  } finally {
+    dialogRef.value?.finishSubmit()
   }
 }
 

@@ -18,9 +18,11 @@ const visible = defineModel<boolean>({ default: false })
 const isEdit = ref(false)
 const formData = ref<Record<string, any>>({})
 const formRef = ref<any>(null)
+const submitting = ref(false)
 
 const open = (data?: Record<string, any>) => {
   visible.value = true
+  submitting.value = false
   isEdit.value = !!(data && data.id)
   nextTick(() => {
     formData.value = data ? { ...data } : {}
@@ -29,22 +31,30 @@ const open = (data?: Record<string, any>) => {
 }
 
 const close = () => {
+  submitting.value = false
   visible.value = false
 }
 
+const finishSubmit = () => {
+  submitting.value = false
+}
+
 const handleSubmit = async () => {
+  if (submitting.value) return
   const valid = await formRef.value?.validate?.().catch(() => false)
   if (!valid) return
+  submitting.value = true
   emit('submit', { ...formData.value, _isEdit: isEdit.value })
 }
 
 const emit = defineEmits<{
-  submit: [{ [key: string]: any; _isEdit: boolean }]
+  submit: [data: { [key: string]: any; _isEdit: boolean }]
 }>()
 
 defineExpose({
   open,
-  close
+  close,
+  finishSubmit
 })
 </script>
 
@@ -54,6 +64,8 @@ defineExpose({
     :title="(isEdit ? '编辑' : '新增') + title"
     :width="width"
     :close-on-click-modal="false"
+    :show-close="!submitting"
+    :close-on-press-escape="!submitting"
     destroy-on-close
     class="hify-form-dialog"
   >
@@ -68,8 +80,8 @@ defineExpose({
     </el-form>
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="visible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">
+        <el-button :disabled="submitting" @click="close">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmit">
           {{ isEdit ? '保存' : '创建' }}
         </el-button>
       </div>

@@ -29,12 +29,14 @@ const props = withDefaults(defineProps<Props<any>>(), {
 
 const loading = ref(false)
 const tableData = ref<any[]>([])
+const errorMessage = ref('')
 const currentPage = ref(1)
 const pageSize = ref(props.pageSize)
 const total = ref(0)
 
 const fetchData = async () => {
   loading.value = true
+  errorMessage.value = ''
   try {
     const res = await props.api({
       page: currentPage.value,
@@ -42,6 +44,10 @@ const fetchData = async () => {
     })
     tableData.value = res.list || []
     total.value = res.total || 0
+  } catch (err: any) {
+    tableData.value = []
+    total.value = 0
+    errorMessage.value = err?.message || '列表加载失败'
   } finally {
     loading.value = false
   }
@@ -63,6 +69,10 @@ const handleSizeChange = (size: number) => {
   fetchData()
 }
 
+const handleToolbarRefresh = () => {
+  refresh()
+}
+
 onMounted(() => {
   fetchData()
 })
@@ -78,10 +88,18 @@ defineExpose({
 
 <template>
   <div class="hify-table">
-    <div class="toolbar">
-      <slot name="toolbar" />
+    <div class="toolbar" @keyup.enter="handleToolbarRefresh">
+      <slot name="toolbar" :refresh="refresh" />
     </div>
-    <el-table :data="tableData" v-loading="loading" stripe style="width: 100%" row-key="id" @expand-change="(row: any, expandedRows: any[]) => $emit('expand-change', row, expandedRows)">
+    <el-table
+      v-if="!errorMessage && (loading || tableData.length > 0)"
+      :data="tableData"
+      v-loading="loading"
+      stripe
+      style="width: 100%"
+      row-key="id"
+      @expand-change="(row: any, expandedRows: any[]) => $emit('expand-change', row, expandedRows)"
+    >
       <el-table-column type="expand" v-if="$slots.expand">
         <template #default="scope">
           <slot name="expand" :row="scope.row" :$index="scope.$index" />
@@ -101,9 +119,16 @@ defineExpose({
         </template>
       </el-table-column>
     </el-table>
-    <el-empty v-if="!loading && tableData.length === 0" description="暂无数据" />
+    <div v-if="!loading && errorMessage" class="state-panel">
+      <el-empty :description="errorMessage">
+        <el-button type="primary" @click="fetchData">重试</el-button>
+      </el-empty>
+    </div>
+    <div v-else-if="!loading && tableData.length === 0" class="state-panel">
+      <el-empty description="暂无数据" />
+    </div>
 
-    <div class="pagination-wrapper">
+    <div v-if="total > 0" class="pagination-wrapper">
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
@@ -128,6 +153,11 @@ defineExpose({
   margin-bottom: var(--space-4);
   display: flex;
   gap: var(--space-3);
+}
+.state-panel {
+  border: 1px dashed var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
 }
 .pagination-wrapper {
   margin-top: var(--space-5);
