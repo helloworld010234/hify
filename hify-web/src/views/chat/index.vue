@@ -356,6 +356,8 @@ onMounted(() => {
   color: var(--color-text-primary);
   border: 1px solid var(--color-border-default);
   border-bottom-left-radius: var(--radius-sm);
+  min-width: 96px;
+  min-height: 44px;
 }
 
 .message-content {
@@ -424,11 +426,12 @@ onMounted(() => {
 
 .send-btn {
   align-self: flex-end;
-  min-width: 88px;
+  width: 88px;
 }
 
 .markdown-body {
   line-height: 1.6;
+  min-width: 0;
 }
 
 .markdown-body :deep(h1),
@@ -515,6 +518,7 @@ onMounted(() => {
 
   .send-btn {
     align-self: stretch;
+    width: 100%;
   }
 }
 </style>

@@ -2,7 +2,7 @@
   <el-container class="layout">
     <el-aside width="220px" class="sidebar">
       <div class="logo">
-        <span class="logo-icon">◈</span>
+        <span class="logo-icon">◆</span>
         <span class="logo-text">Hify</span>
       </div>
       <el-menu

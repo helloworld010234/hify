@@ -5,6 +5,25 @@
       <el-button type="primary" @click="handleAdd">新增 Agent</el-button>
     </div>
 
+    <el-alert
+      v-if="metaError"
+      type="warning"
+      :title="metaError"
+      description="请先确认模型供应商已配置并测试通过。"
+      show-icon
+      :closable="false"
+      class="path-alert"
+    />
+    <el-alert
+      v-else-if="!metaLoading && !hasAvailableModels()"
+      type="info"
+      title="暂无可用模型"
+      description="请先到模型供应商管理中新增供应商并测试连接，再创建 Agent。"
+      show-icon
+      :closable="false"
+      class="path-alert"
+    />
+
     <HifyTable
       ref="tableRef"
       :columns="columns"
@@ -79,7 +98,7 @@
         <el-tabs v-model="activeTab" class="agent-tabs">
           <el-tab-pane label="基础配置" name="basic">
             <el-form-item label="名称" prop="name">
-              <el-input v-model="form.name" placeholder="如 代码助手" maxlength="100" show-word-limit />
+              <el-input v-model="form.name" placeholder="例如 代码助手" maxlength="100" show-word-limit />
             </el-form-item>
             <el-form-item label="描述" prop="description">
               <el-input
@@ -112,7 +131,7 @@
                 v-model="form.systemPrompt"
                 type="textarea"
                 :rows="6"
-                placeholder="输入系统提示词（System Prompt），定义 Agent 的角色和行为"
+                placeholder="输入系统提示词，定义 Agent 的角色和行为"
               />
             </el-form-item>
             <el-form-item label="温度" prop="temperature">
@@ -147,7 +166,7 @@
 
           <el-tab-pane label="工具绑定" name="tools">
             <div class="tool-bind-area">
-              <p class="tool-hint">选择该 Agent 可以调用的 MCP 工具（多选）</p>
+              <p class="tool-hint">选择该 Agent 可以调用的 MCP 工具（可多选）</p>
               <el-checkbox-group v-model="form.toolIds">
                 <el-checkbox
                   v-for="tool in toolOptions"
@@ -200,6 +219,8 @@ const activeTab = ref('basic')
 
 const modelGroups = ref<ModelGroup[]>([])
 const toolOptions = ref<ToolOption[]>([])
+const metaLoading = ref(true)
+const metaError = ref('')
 
 const columns = [
   { prop: 'name', label: '名称', minWidth: 160 },
@@ -220,14 +241,20 @@ const formRules = {
   maxContextTurns: [{ required: true, message: '请设置上下文轮数', trigger: 'change', type: 'number' }]
 }
 
-/** 加载模型分组和工具选项 */
+const hasAvailableModels = () => modelGroups.value.some(group => group.models?.length)
+
 const loadMetaData = async () => {
+  metaLoading.value = true
+  metaError.value = ''
   try {
     const [modelRes, toolRes] = await Promise.all([getModelGroups(), getTools()])
     modelGroups.value = modelRes || []
     toolOptions.value = toolRes || []
-  } catch (e) {
-    // 静默失败
+  } catch (e: any) {
+    metaError.value = e.message || '模型和工具元数据加载失败'
+    ElMessage.warning('模型列表加载失败，请先检查供应商配置')
+  } finally {
+    metaLoading.value = false
   }
 }
 
@@ -239,6 +266,10 @@ const fetchAgentList = (params: { page: number; size: number }) => {
 }
 
 const handleAdd = () => {
+  if (!hasAvailableModels()) {
+    ElMessage.warning('请先配置并测试可用的模型供应商')
+    return
+  }
   activeTab.value = 'basic'
   dialogRef.value?.open({
     description: '',
@@ -268,7 +299,7 @@ const handleEdit = async (row: AgentListItem) => {
       toolIds: detail.toolIds || []
     })
   } catch (e: any) {
-    // request interceptor 已显示错误
+    // request interceptor already shows the failure.
   }
 }
 
@@ -280,12 +311,12 @@ const handleSubmit = async (data: any) => {
       ElMessage.success('更新成功')
     } else {
       await createAgent(payload)
-      ElMessage.success('创建成功')
+      ElMessage.success('创建成功，可以前往对话页开始使用')
     }
     dialogRef.value?.close()
     tableRef.value?.refresh()
   } catch (e: any) {
-    // request interceptor 已显示错误
+    // request interceptor already shows the failure.
   } finally {
     dialogRef.value?.finishSubmit()
   }
@@ -296,7 +327,7 @@ const handleDelete = useConfirm(
     await deleteAgent(row.id)
     tableRef.value?.refresh()
   },
-  { title: '删除 Agent', message: '删除后不可恢复，确认吗？' }
+  { title: '删除 Agent', message: '删除后不可恢复，确认删除该 Agent 吗？' }
 )
 
 const handleClone = useConfirm(
@@ -308,8 +339,8 @@ const handleClone = useConfirm(
   { title: '克隆 Agent', message: '确认克隆该 Agent 吗？克隆后的 Agent 默认禁用。' }
 )
 
-const handleMaxContextTurnsChange = async (row: AgentListItem, val: number | undefined) => {
-  if (val === undefined || val < 1) return
+const handleMaxContextTurnsChange = async (row: AgentListItem, val: number | null | undefined) => {
+  if (val === undefined || val === null || val < 1) return
   try {
     await updateMaxContextTurns(row.id, val)
     ElMessage.success('上下文轮数更新成功')
@@ -318,8 +349,8 @@ const handleMaxContextTurnsChange = async (row: AgentListItem, val: number | und
   }
 }
 
-const handleTemperatureChange = async (row: AgentListItem, val: number | undefined) => {
-  if (val === undefined || val < 0 || val > 1) return
+const handleTemperatureChange = async (row: AgentListItem, val: number | null | undefined) => {
+  if (val === undefined || val === null || val < 0 || val > 1) return
   try {
     await updateTemperature(row.id, val)
     ElMessage.success('温度更新成功')
@@ -348,6 +379,10 @@ onMounted(() => {
   font-weight: var(--font-semibold);
   color: var(--color-text-primary);
   margin: 0;
+}
+
+.path-alert {
+  margin-bottom: var(--space-4);
 }
 
 .agent-tabs :deep(.el-tabs__content) {

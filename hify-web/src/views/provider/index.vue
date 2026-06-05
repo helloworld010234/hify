@@ -21,6 +21,12 @@
         />
       </template>
 
+      <template #status="{ row }">
+        <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
+          {{ row.status === 'active' ? '启用' : '禁用' }}
+        </el-tag>
+      </template>
+
       <template #healthStatus="{ row }">
         <el-tag :type="healthTagType(row.healthStatus)" size="small">
           {{ healthLabel(row.healthStatus) }}
@@ -53,9 +59,9 @@
             <el-table-column prop="modelCode" label="模型编码" min-width="140" />
             <el-table-column prop="modelType" label="类型" width="100" />
             <el-table-column prop="status" label="状态" width="80">
-              <template #default="{ row: m }">
-                <el-tag :type="m.status === 'active' ? 'success' : 'info'" size="small">
-                  {{ m.status === 'active' ? '启用' : '禁用' }}
+              <template #default="{ row: model }">
+                <el-tag :type="model.status === 'active' ? 'success' : 'info'" size="small">
+                  {{ model.status === 'active' ? '启用' : '禁用' }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -66,7 +72,14 @@
 
       <template #action="{ row }">
         <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-        <el-button link type="success" @click="handleTestConnection(row)">连通测试</el-button>
+        <el-button
+          link
+          type="success"
+          :loading="testingProviders[row.id]"
+          @click="handleTestConnection(row)"
+        >
+          测试连接
+        </el-button>
         <el-button link type="danger" class="delete-btn" @click="handleDelete(row)">删除</el-button>
       </template>
     </HifyTable>
@@ -79,7 +92,7 @@
     >
       <template #default="{ form, isEdit }">
         <el-form-item label="名称" prop="name">
-          <el-input v-model="form.name" placeholder="如 OpenAI" />
+          <el-input v-model="form.name" placeholder="例如 OpenAI" />
         </el-form-item>
         <el-form-item label="协议类型" prop="providerType">
           <el-select v-model="form.providerType" placeholder="选择协议类型" :disabled="isEdit" style="width: 100%">
@@ -101,7 +114,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="API Key" prop="apiKey">
-          <el-input v-model="form.apiKey" type="password" show-password placeholder="为空则不修改原密钥" />
+          <el-input v-model="form.apiKey" type="password" show-password placeholder="编辑时留空表示不修改原密钥" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
@@ -139,15 +152,16 @@ const searchKey = ref('')
 
 const loadingModels = ref<Record<number, boolean>>({})
 const modelMap = ref<Record<number, any[]>>({})
+const testingProviders = ref<Record<number, boolean>>({})
 
 const columns = [
   { prop: 'name', label: '名称', minWidth: 160 },
   { prop: 'providerType', label: '协议类型', width: 140 },
   { prop: 'baseUrl', label: 'Base URL', minWidth: 240 },
-  { prop: 'status', label: '状态', width: 90 },
+  { prop: 'status', label: '状态', width: 90, slot: 'status' },
   { prop: 'healthStatus', label: '健康状态', width: 140, slot: 'healthStatus' },
   { prop: 'modelCount', label: '模型数', width: 100, slot: 'modelCount' },
-  { prop: 'action', label: '操作', width: 200, slot: 'action' }
+  { prop: 'action', label: '操作', width: 220, slot: 'action' }
 ]
 
 const formRules = {
@@ -224,12 +238,12 @@ const handleSubmit = async (data: any) => {
       ElMessage.success('更新成功')
     } else {
       await createProvider(payload)
-      ElMessage.success('创建成功')
+      ElMessage.success('创建成功，请测试连接后创建 Agent')
     }
     dialogRef.value?.close()
     tableRef.value?.refresh()
   } catch (e: any) {
-    // request interceptor 已显示错误
+    // request interceptor already shows the failure.
   } finally {
     dialogRef.value?.finishSubmit()
   }
@@ -240,20 +254,26 @@ const handleDelete = useConfirm(
     await deleteProvider(row.id)
     tableRef.value?.refresh()
   },
-  { title: '删除供应商', message: '删除后不可恢复，确认吗？' }
+  { title: '删除供应商', message: '删除后不可恢复，确认删除该供应商吗？' }
 )
 
 const handleTestConnection = async (row: ProviderListItem) => {
+  testingProviders.value[row.id] = true
   try {
-    const res = await testConnection(row.id)
-    if (res.success) {
-      ElMessage.success(`连通成功，延迟 ${res.latencyMs}ms，发现 ${res.modelCount} 个模型`)
+    const result = await testConnection(row.id)
+    if (result.success) {
+      const latencyText = result.latencyMs ? `，耗时 ${result.latencyMs}ms` : ''
+      const modelText = result.modelCount !== undefined ? `，发现 ${result.modelCount} 个模型` : ''
+      ElMessage.success(`连接成功${latencyText}${modelText}。下一步可以创建 Agent。`)
     } else {
-      ElMessage.error(`连通失败：${res.errorMessage}`)
+      ElMessage.error(result.errorMessage || '连接失败，请检查 API Key、Base URL 或网络连通性')
     }
     tableRef.value?.refresh()
+    modelMap.value[row.id] = []
   } catch (e: any) {
-    // request interceptor 已显示错误
+    // request interceptor already shows the failure.
+  } finally {
+    testingProviders.value[row.id] = false
   }
 }
 </script>
@@ -275,12 +295,10 @@ const handleTestConnection = async (row: ProviderListItem) => {
   margin: 0;
 }
 
-/* 表格行高 52px */
 :deep(.el-table__row) {
   height: 52px;
 }
 
-/* 删除按钮间距 */
 .delete-btn {
   margin-left: 8px;
 }
