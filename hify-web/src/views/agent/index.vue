@@ -62,6 +62,12 @@
         />
       </template>
 
+      <template #knowledgeBaseId="{ row }">
+        <el-tag :type="row.knowledgeBaseId ? 'success' : 'info'" size="small">
+          {{ row.knowledgeBaseId ? '已绑定' : '未绑定' }}
+        </el-tag>
+      </template>
+
       <template #maxContextTurns="scope">
         <el-input-number
           :model-value="scope.row.maxContextTurns"
@@ -125,6 +131,30 @@
                   />
                 </el-option-group>
               </el-select>
+            </el-form-item>
+            <el-form-item label="知识库" prop="knowledgeBaseId">
+              <el-select
+                v-model="form.knowledgeBaseId"
+                placeholder="不绑定知识库"
+                clearable
+                filterable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="knowledge in knowledgeOptions"
+                  :key="knowledge.id"
+                  :label="knowledge.name"
+                  :value="knowledge.id"
+                >
+                  <div class="knowledge-option">
+                    <span class="knowledge-option__name">{{ knowledge.name }}</span>
+                    <span class="knowledge-option__meta">{{ knowledge.documentCount }} 个文档</span>
+                  </div>
+                </el-option>
+              </el-select>
+              <div v-if="!knowledgeOptions.length" class="field-hint">
+                暂无知识库，可先保存 Agent，后续上传文档后再绑定。
+              </div>
             </el-form-item>
             <el-form-item label="System Prompt" prop="systemPrompt">
               <el-input
@@ -211,6 +241,10 @@ import {
   type ModelGroup,
   type ToolOption
 } from '@/api/agent'
+import {
+  getKnowledgeBaseList,
+  type KnowledgeBaseItem
+} from '@/api/knowledge'
 
 const tableRef = ref<InstanceType<typeof HifyTable>>()
 const dialogRef = ref<InstanceType<typeof HifyFormDialog>>()
@@ -219,12 +253,14 @@ const activeTab = ref('basic')
 
 const modelGroups = ref<ModelGroup[]>([])
 const toolOptions = ref<ToolOption[]>([])
+const knowledgeOptions = ref<KnowledgeBaseItem[]>([])
 const metaLoading = ref(true)
 const metaError = ref('')
 
 const columns = [
   { prop: 'name', label: '名称', minWidth: 160 },
   { prop: 'modelName', label: '模型', width: 160 },
+  { prop: 'knowledgeBaseId', label: '知识库', width: 110, slot: 'knowledgeBaseId' },
   { prop: 'toolCount', label: '工具数', width: 180, slot: 'toolCount' },
   { prop: 'temperature', label: '温度', width: 100, slot: 'temperature' },
   { prop: 'maxContextTurns', label: '上下文轮数', width: 120, slot: 'maxContextTurns' },
@@ -250,6 +286,13 @@ const loadMetaData = async () => {
     const [modelRes, toolRes] = await Promise.all([getModelGroups(), getTools()])
     modelGroups.value = modelRes || []
     toolOptions.value = toolRes || []
+    try {
+      const knowledgeRes = await getKnowledgeBaseList({ page: 1, size: 100 })
+      knowledgeOptions.value = knowledgeRes?.list || []
+    } catch (knowledgeError) {
+      knowledgeOptions.value = []
+      ElMessage.warning('知识库列表加载失败，可先创建普通 Agent')
+    }
   } catch (e: any) {
     metaError.value = e.message || '模型和工具元数据加载失败'
     ElMessage.warning('模型列表加载失败，请先检查供应商配置')
@@ -275,6 +318,7 @@ const handleAdd = () => {
     description: '',
     systemPrompt: '',
     temperature: 0.7,
+    knowledgeBaseId: null,
     maxTokens: 2048,
     maxContextTurns: 10,
     enabled: 1,
@@ -292,6 +336,7 @@ const handleEdit = async (row: AgentListItem) => {
       description: detail.description,
       systemPrompt: detail.systemPrompt,
       modelConfigId: detail.modelConfigId,
+      knowledgeBaseId: detail.knowledgeBaseId ?? null,
       temperature: detail.temperature,
       maxTokens: detail.maxTokens,
       maxContextTurns: detail.maxContextTurns,
@@ -399,6 +444,25 @@ onMounted(() => {
   min-width: 40px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.knowledge-option {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.knowledge-option__name {
+  color: var(--color-text-primary);
+}
+.knowledge-option__meta {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.field-hint {
+  margin-top: var(--space-2);
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--color-text-secondary);
 }
 

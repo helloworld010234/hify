@@ -8,11 +8,23 @@
         </el-button>
         <h2>{{ kbName }} - 文档管理</h2>
       </div>
-      <el-button type="primary" @click="uploadVisible = true">上传文档</el-button>
+      <div class="header-actions">
+        <el-button :disabled="!hasReadyDocuments" @click="goToAgents">绑定到 Agent</el-button>
+        <el-button type="primary" @click="uploadVisible = true">上传文档</el-button>
+      </div>
     </div>
 
     <!-- 文档列表 -->
     <div class="table-card">
+      <el-alert
+        v-if="hasProcessingDocuments"
+        type="info"
+        title="文档正在解析"
+        description="解析完成后即可绑定到 Agent，用于 Chat 检索回答。"
+        show-icon
+        :closable="false"
+        class="path-alert"
+      />
       <el-table :data="documentList" v-loading="loading" stripe style="width: 100%">
         <el-table-column prop="name" label="文件名" min-width="200" show-overflow-tooltip />
         <el-table-column prop="fileType" label="类型" width="80">
@@ -143,8 +155,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Loading, UploadFilled, Document } from '@element-plus/icons-vue'
 import { useConfirm } from '@/composables/useConfirm'
@@ -160,6 +172,7 @@ import {
 } from '@/api/knowledge'
 
 const route = useRoute()
+const router = useRouter()
 const kbId = Number(route.params.id)
 
 // ==================== 知识库信息 ====================
@@ -180,6 +193,14 @@ const documentList = ref<DocumentItem[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const hasReadyDocuments = computed(() => documentList.value.some(doc => doc.status === 'DONE'))
+const hasProcessingDocuments = computed(() =>
+  documentList.value.some(doc => doc.status === 'PENDING' || doc.status === 'PROCESSING')
+)
+
+const goToAgents = () => {
+  router.push('/agents')
+}
 
 const fetchDocumentList = async () => {
   loading.value = true
@@ -265,7 +286,7 @@ const handleUpload = async () => {
   uploading.value = true
   try {
     const res: any = await uploadDocument(kbId, selectedFile.value)
-    ElMessage.success('上传成功')
+    ElMessage.success('上传成功，正在解析文档')
     uploadVisible.value = false
     selectedFile.value = null
 
@@ -302,7 +323,7 @@ const startPolling = (documentId: number) => {
       if (doc.status === 'DONE' || doc.status === 'FAILED') {
         stopPolling(documentId)
         if (doc.status === 'DONE') {
-          ElMessage.success(`文档「${doc.name}」处理完成`)
+          ElMessage.success(`文档「${doc.name}」处理完成，可绑定到 Agent 使用`)
         } else if (doc.status === 'FAILED') {
           ElMessage.error(`文档「${doc.name}」处理失败：${doc.errorMessage}`)
         }
@@ -393,6 +414,12 @@ onUnmounted(() => {
   gap: var(--space-4);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .page-header h2 {
   font-size: var(--text-2xl);
   font-weight: var(--font-semibold);
@@ -405,6 +432,10 @@ onUnmounted(() => {
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-default);
   padding: var(--space-5);
+}
+
+.path-alert {
+  margin-bottom: var(--space-4);
 }
 
 .pagination-wrapper {

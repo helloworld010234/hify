@@ -6,6 +6,7 @@ export interface Agent {
   description: string
   systemPrompt?: string
   modelConfigId: number
+  knowledgeBaseId?: number | null
   temperature?: number
   maxTokens?: number
   maxContextTurns?: number
@@ -18,6 +19,8 @@ export interface AgentListItem {
   name: string
   description: string
   modelName: string
+  knowledgeBaseId?: number | null
+  knowledgeCount?: number
   toolCount: number
   toolIds?: number[]
   temperature: number
@@ -30,6 +33,7 @@ export interface AgentListItem {
 
 export interface AgentDetail extends Agent {
   modelName: string
+  knowledgeBaseId?: number | null
   knowledgeIds: number[]
   toolIds: number[]
   createdAt: string
