@@ -40,6 +40,18 @@ class EncryptionServiceTest extends AbstractUnitTest {
     }
 
     @Test
+    void should_returnOriginalValue_when_decryptLegacyPlainText() {
+        // Given
+        String legacyPlainText = "sk-legacy-plain-text";
+
+        // When
+        String decrypted = encryptionService.decrypt(legacyPlainText);
+
+        // Then
+        assertThat(decrypted).isEqualTo(legacyPlainText);
+    }
+
+    @Test
     void should_produceSameCipher_when_samePlainText() {
         // Given
         String plain = "SamePlainText";

@@ -110,7 +110,7 @@ export function updateTemperature(id: number, temperature: number) {
 
 /** 快捷修改工具绑定 */
 export function updateTools(id: number, toolIds: number[]) {
-  return patch<void>(`/v1/agents/${id}/tools`, { toolIds })
+  return put<void>(`/v1/agents/${id}/tools`, { toolIds })
 }
 
 /** 获取可用工具列表 */

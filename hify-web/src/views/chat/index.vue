@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted } from 'vue'
-import { ElMessage, ElButton, ElInput, ElTag } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Close, Position, RefreshRight } from '@element-plus/icons-vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { chatApi } from '../../api/chat'
 import type { ChatStreamEvent } from '../../api/chat'
+import { getAgentList, type AgentListItem } from '@/api/agent'
 
 marked.setOptions({
   gfm: true,
@@ -18,7 +19,7 @@ function renderMarkdown(content: string): string {
   return DOMPurify.sanitize(rawHtml)
 }
 
-type SessionStatus = 'creating' | 'ready' | 'failed'
+type SessionStatus = 'idle' | 'creating' | 'ready' | 'failed'
 type AssistantMessageStatus = 'loading' | 'streaming' | 'done' | 'stopped' | 'error'
 
 interface ChatMessage {
@@ -35,9 +36,12 @@ const isSending = ref(false)
 const messageListRef = ref<HTMLDivElement>()
 const sessionId = ref('')
 const currentAbortController = ref<AbortController | null>(null)
-const sessionStatus = ref<SessionStatus>('creating')
+const sessionStatus = ref<SessionStatus>('idle')
 const sessionError = ref('')
 const stoppingMessageIndex = ref<number | null>(null)
+const agentOptions = ref<AgentListItem[]>([])
+const selectedAgentId = ref<number | null>(null)
+const loadingAgents = ref(false)
 
 function scrollToBottom() {
   nextTick(() => {
@@ -68,12 +72,90 @@ function handleKeydown(e: Event | KeyboardEvent) {
   }
 }
 
+function resetSessionState() {
+  messages.value = []
+  inputText.value = ''
+  sessionId.value = ''
+  sessionStatus.value = 'idle'
+  sessionError.value = ''
+  isSending.value = false
+  currentAbortController.value = null
+  stoppingMessageIndex.value = null
+}
+
+async function loadAgents() {
+  loadingAgents.value = true
+  sessionError.value = ''
+  try {
+    const response = await getAgentList({ page: 1, size: 100, enabled: 1 })
+    agentOptions.value = response.list || []
+
+    if (!agentOptions.value.length) {
+      selectedAgentId.value = null
+      sessionStatus.value = 'failed'
+      sessionError.value = 'No enabled agent is available. Please create and enable an agent first.'
+      return
+    }
+
+    const savedAgentId = Number(localStorage.getItem('chatAgentId') || '')
+    const matchedAgent = agentOptions.value.find(agent => agent.id === savedAgentId)
+    selectedAgentId.value = matchedAgent?.id ?? agentOptions.value[0].id
+    sessionStatus.value = 'idle'
+  } catch (e: any) {
+    selectedAgentId.value = null
+    sessionStatus.value = 'failed'
+    sessionError.value = e.message || 'Failed to load the agent list'
+    ElMessage.error('Failed to load the agent list: ' + sessionError.value)
+  } finally {
+    loadingAgents.value = false
+  }
+}
+
+async function handleCreateSession() {
+  if (!selectedAgentId.value) {
+    ElMessage.warning('Please select an agent first')
+    return
+  }
+
+  sessionStatus.value = 'creating'
+  sessionError.value = ''
+  sessionId.value = ''
+  messages.value = []
+  inputText.value = ''
+
+  try {
+    const data = await chatApi.createSession(selectedAgentId.value)
+    const createdSessionId = String(data.id || data.data?.id || '')
+    if (!createdSessionId) {
+      throw new Error('The create session API did not return a session id')
+    }
+
+    sessionId.value = createdSessionId
+    sessionStatus.value = 'ready'
+    localStorage.setItem('chatAgentId', String(selectedAgentId.value))
+  } catch (e: any) {
+    sessionStatus.value = 'failed'
+    sessionError.value = e.message || 'Failed to create the session'
+    ElMessage.error('Failed to create the session: ' + sessionError.value)
+  }
+}
+
+function handleAgentChange(agentId: number | null) {
+  selectedAgentId.value = agentId
+  if (agentId == null) {
+    localStorage.removeItem('chatAgentId')
+  } else {
+    localStorage.setItem('chatAgentId', String(agentId))
+  }
+  resetSessionState()
+}
+
 async function handleSend() {
   const content = inputText.value.trim()
   if (!content || isSending.value) return
 
   if (sessionStatus.value !== 'ready' || !sessionId.value) {
-    ElMessage.warning('会话准备完成后再发送消息')
+    ElMessage.warning('Please create a session before sending a message')
     return
   }
 
@@ -115,7 +197,7 @@ async function handleSend() {
           const aiMsg = messages.value[aiIndex]
           if (!aiMsg) return
           aiMsg.status = 'error'
-          aiMsg.errorMessage = data.message || data.content || '流式响应出错'
+          aiMsg.errorMessage = data.message || data.content || 'Streaming response failed'
           aiMsg.content = aiMsg.errorMessage
           finishSending()
           ElMessage.error(aiMsg.errorMessage)
@@ -131,12 +213,12 @@ async function handleSend() {
       if (isAbort && stoppingMessageIndex.value === aiIndex) {
         aiMsg.status = 'stopped'
         if (!aiMsg.content) {
-          aiMsg.content = '已停止生成'
+          aiMsg.content = 'Generation stopped'
         }
         aiMsg.htmlContent = renderMarkdown(aiMsg.content)
       } else {
         aiMsg.status = 'error'
-        const errorMessage = err.message || '发送失败，请稍后重试'
+        const errorMessage = err.message || 'Send failed, please try again later'
         aiMsg.errorMessage = errorMessage
         aiMsg.content = errorMessage
         ElMessage.error(errorMessage)
@@ -147,77 +229,82 @@ async function handleSend() {
   }
 }
 
-async function initializeSession(forceNew = false) {
-  sessionStatus.value = 'creating'
-  sessionError.value = ''
-
-  if (!forceNew) {
-    const urlParams = new URLSearchParams(window.location.search)
-    const sid = urlParams.get('sessionId') || localStorage.getItem('chatSessionId')
-    if (sid) {
-      sessionId.value = sid
-      sessionStatus.value = 'ready'
-      return
-    }
-  }
-
-  try {
-    const data = await chatApi.createSession(6)
-    sessionId.value = String(data.id || data.data?.id || '')
-    if (!sessionId.value) {
-      throw new Error('创建会话接口未返回 sessionId')
-    }
-    localStorage.setItem('chatSessionId', sessionId.value)
-    sessionStatus.value = 'ready'
-  } catch (e: any) {
-    sessionId.value = ''
-    sessionStatus.value = 'failed'
-    sessionError.value = e.message || '创建会话失败'
-    ElMessage.error('创建会话失败: ' + sessionError.value)
-  }
-}
-
 function retryCreateSession() {
-  localStorage.removeItem('chatSessionId')
-  initializeSession(true)
+  handleCreateSession()
 }
 
 onMounted(() => {
-  initializeSession()
+  loadAgents()
 })
 </script>
 
 <template>
   <div class="chat-page">
     <div class="chat-header">
-      <div class="session-state">
-        <el-tag v-if="sessionStatus === 'creating'" type="info" size="small">会话创建中</el-tag>
-        <el-tag v-else-if="sessionStatus === 'failed'" type="danger" size="small">会话创建失败</el-tag>
-        <el-tag v-else type="success" size="small">Session: {{ sessionId }}</el-tag>
-        <span v-if="sessionStatus === 'failed'" class="session-error">{{ sessionError }}</span>
+      <div class="chat-header-left">
+        <el-select
+          data-testid="chat-agent-select"
+          :model-value="selectedAgentId"
+          placeholder="Select agent"
+          filterable
+          clearable
+          style="width: 240px"
+          :loading="loadingAgents"
+          @update:modelValue="handleAgentChange"
+        >
+          <el-option
+            v-for="agent in agentOptions"
+            :key="agent.id"
+            :label="agent.name"
+            :value="agent.id"
+          />
+        </el-select>
+        <el-button
+          data-testid="chat-create-session-button"
+          type="primary"
+          :loading="sessionStatus === 'creating'"
+          :disabled="loadingAgents || !selectedAgentId"
+          @click="handleCreateSession"
+        >
+          Create Session
+        </el-button>
       </div>
+
+      <div class="session-state">
+        <el-tag v-if="sessionStatus === 'idle'" type="info" size="small">No session yet</el-tag>
+        <el-tag v-else-if="sessionStatus === 'creating'" type="info" size="small">Creating session</el-tag>
+        <el-tag v-else-if="sessionStatus === 'failed'" type="danger" size="small">Session creation failed</el-tag>
+        <el-tag v-else data-testid="chat-session-tag" type="success" size="small">Session: {{ sessionId }}</el-tag>
+        <span v-if="sessionError" class="session-error">{{ sessionError }}</span>
+      </div>
+
       <el-button
-        v-if="sessionStatus === 'failed'"
+        v-if="sessionError && selectedAgentId"
         size="small"
         type="primary"
         :icon="RefreshRight"
         @click="retryCreateSession"
       >
-        重试
+        Retry
       </el-button>
     </div>
 
     <div ref="messageListRef" class="message-list">
       <div v-if="sessionStatus === 'ready' && messages.length === 0" class="empty-state">
-        <div class="empty-title">当前会话已准备好</div>
-        <div class="empty-subtitle">输入消息后即可开始对话。</div>
+        <div class="empty-title">The session is ready</div>
+        <div class="empty-subtitle">Enter a message below to start chatting.</div>
+      </div>
+
+      <div v-else-if="sessionStatus !== 'ready'" class="empty-state">
+        <div class="empty-title">Select an agent and create a session first</div>
+        <div class="empty-subtitle">In pure UI mode, both agent selection and session creation are completed in the page.</div>
       </div>
 
       <template v-for="(msg, _index) in messages" :key="_index">
         <div :class="['message-row', msg.role]">
           <div class="message-bubble">
             <template v-if="msg.status === 'loading'">
-              <div class="loading-dots" aria-label="助手正在思考">
+              <div class="loading-dots" aria-label="Assistant is thinking">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -230,7 +317,7 @@ onMounted(() => {
               <pre v-if="msg.role === 'user'" class="message-content">{{ msg.content }}</pre>
               <div v-else>
                 <div class="markdown-body" v-html="msg.htmlContent ?? renderMarkdown(msg.content)"></div>
-                <div v-if="msg.status === 'stopped'" class="message-meta">已停止生成</div>
+                <div v-if="msg.status === 'stopped'" class="message-meta">Generation stopped</div>
               </div>
             </template>
           </div>
@@ -240,11 +327,12 @@ onMounted(() => {
 
     <div class="input-area">
       <el-input
+        data-testid="chat-message-input"
         v-model="inputText"
         type="textarea"
         :rows="3"
         resize="none"
-        placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+        placeholder="Enter a message. Press Enter to send and Shift+Enter for a new line."
         :disabled="isSending || sessionStatus !== 'ready'"
         @keydown="handleKeydown"
       />
@@ -255,7 +343,7 @@ onMounted(() => {
         :disabled="(!isSending && !inputText.trim()) || sessionStatus !== 'ready'"
         @click="isSending ? handleStop() : handleSend()"
       >
-        {{ isSending ? '停止' : '发送' }}
+        {{ isSending ? 'Stop' : 'Send' }}
       </el-button>
     </div>
   </div>
@@ -279,6 +367,13 @@ onMounted(() => {
   background-color: var(--color-bg-elevated);
   border-bottom: 1px solid var(--color-border-default);
   flex-shrink: 0;
+}
+
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .session-state {
@@ -476,49 +571,5 @@ onMounted(() => {
 .markdown-body :deep(ol) {
   margin: 8px 0;
   padding-left: 24px;
-}
-
-.markdown-body :deep(blockquote) {
-  margin: 8px 0;
-  padding-left: 12px;
-  border-left: 4px solid var(--color-border-strong);
-  color: var(--color-text-secondary);
-}
-
-.markdown-body :deep(table) {
-  border-collapse: collapse;
-  margin: 8px 0;
-}
-
-.markdown-body :deep(th),
-.markdown-body :deep(td) {
-  border: 1px solid var(--color-border-strong);
-  padding: 6px 12px;
-}
-
-.markdown-body :deep(hr) {
-  border: none;
-  border-top: 1px solid var(--color-border-default);
-  margin: 12px 0;
-}
-
-@media (max-width: 720px) {
-  .chat-page {
-    height: calc(100vh - 32px);
-    min-height: 520px;
-  }
-
-  .message-bubble {
-    max-width: 88%;
-  }
-
-  .input-area {
-    flex-direction: column;
-  }
-
-  .send-btn {
-    align-self: stretch;
-    width: 100%;
-  }
 }
 </style>

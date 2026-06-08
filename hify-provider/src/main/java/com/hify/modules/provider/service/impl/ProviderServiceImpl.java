@@ -42,6 +42,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ProviderServiceImpl implements com.hify.modules.provider.api.ProviderService {
 
+    private static final int MAX_ERROR_MSG_LENGTH = 512;
+
     private final ProviderMapper providerMapper;
     private final ModelConfigMapper modelConfigMapper;
     private final ProviderHealthMapper providerHealthMapper;
@@ -310,7 +312,7 @@ public class ProviderServiceImpl implements com.hify.modules.provider.api.Provid
                         : (provider.getConsecutiveFailures() == null ? 0 : provider.getConsecutiveFailures()) + 1
         );
         provider.setLastCheckTime(java.time.LocalDateTime.now());
-        provider.setLastErrorMsg(result.isSuccess() ? null : result.getErrorMessage());
+        provider.setLastErrorMsg(result.isSuccess() ? null : normalizeErrorMsg(result.getErrorMessage()));
         providerMapper.updateById(provider);
 
         // 更新或插入健康快照（t_provider_health）
@@ -322,7 +324,7 @@ public class ProviderServiceImpl implements com.hify.modules.provider.api.Provid
         health.setHealthStatus(result.isSuccess() ? "healthy" : "unhealthy");
         health.setConsecutiveFailures(provider.getConsecutiveFailures());
         health.setLastCheckTime(java.time.LocalDateTime.now());
-        health.setLastErrorMsg(result.getErrorMessage());
+        health.setLastErrorMsg(normalizeErrorMsg(result.getErrorMessage()));
         health.setResponseTimeMs(result.getLatencyMs());
 
         if (health.getId() == null) {
@@ -532,6 +534,13 @@ public class ProviderServiceImpl implements com.hify.modules.provider.api.Provid
             return null;
         }
         return model.getModelName();
+    }
+
+    private String normalizeErrorMsg(String errorMsg) {
+        if (errorMsg == null || errorMsg.length() <= MAX_ERROR_MSG_LENGTH) {
+            return errorMsg;
+        }
+        return errorMsg.substring(0, MAX_ERROR_MSG_LENGTH);
     }
 
     /**

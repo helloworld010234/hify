@@ -1,8 +1,8 @@
 <template>
   <div class="provider-list">
     <div class="page-header">
-      <h2>模型供应商管理</h2>
-      <el-button type="primary" @click="handleAdd">新增供应商</el-button>
+      <h2>Provider Management</h2>
+      <el-button data-testid="provider-add-button" type="primary" @click="handleAdd">Add Provider</el-button>
     </div>
 
     <HifyTable
@@ -14,7 +14,7 @@
       <template #toolbar>
         <el-input
           v-model="searchKey"
-          placeholder="搜索供应商名称"
+          placeholder="Search provider name"
           clearable
           style="width: 240px"
           @clear="tableRef?.refresh()"
@@ -23,7 +23,7 @@
 
       <template #status="{ row }">
         <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
-          {{ row.status === 'active' ? '启用' : '禁用' }}
+          {{ row.status === 'active' ? 'Active' : 'Inactive' }}
         </el-tag>
       </template>
 
@@ -42,7 +42,7 @@
           type="primary"
           @click="toggleExpand(row)"
         >
-          {{ row.modelCount ?? 0 }} 个模型
+          {{ row.modelCount ?? 0 }} models
         </el-button>
       </template>
 
@@ -55,74 +55,86 @@
             :border="true"
             style="width: 100%"
           >
-            <el-table-column prop="modelName" label="模型名称" min-width="160" />
-            <el-table-column prop="modelCode" label="模型编码" min-width="140" />
-            <el-table-column prop="modelType" label="类型" width="100" />
-            <el-table-column prop="status" label="状态" width="80">
+            <el-table-column prop="modelName" label="Model Name" min-width="160" />
+            <el-table-column prop="modelCode" label="Model Code" min-width="140" />
+            <el-table-column prop="modelType" label="Type" width="100" />
+            <el-table-column prop="status" label="Status" width="80">
               <template #default="{ row: model }">
                 <el-tag :type="model.status === 'active' ? 'success' : 'info'" size="small">
-                  {{ model.status === 'active' ? '启用' : '禁用' }}
+                  {{ model.status === 'active' ? 'Active' : 'Inactive' }}
                 </el-tag>
               </template>
             </el-table-column>
           </el-table>
-          <el-empty v-else description="暂无模型" :image-size="60" />
+          <el-empty v-else description="No models" :image-size="60" />
         </div>
       </template>
 
       <template #action="{ row }">
-        <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+        <el-button :data-testid="`provider-edit-button-${row.name}`" link type="primary" @click="handleEdit(row)">Edit</el-button>
         <el-button
           link
           type="success"
           :loading="testingProviders[row.id]"
           @click="handleTestConnection(row)"
         >
-          测试连接
+          Test
         </el-button>
-        <el-button link type="danger" class="delete-btn" @click="handleDelete(row)">删除</el-button>
+        <el-button link type="danger" class="delete-btn" @click="handleDelete(row)">Delete</el-button>
       </template>
     </HifyTable>
 
     <HifyFormDialog
       ref="dialogRef"
-      title="供应商"
+      title="Provider"
       :rules="formRules"
       @submit="handleSubmit"
     >
       <template #default="{ form, isEdit }">
-        <el-form-item label="名称" prop="name">
-          <el-input v-model="form.name" placeholder="例如 OpenAI" />
+        <el-form-item label="Name" prop="name">
+          <el-input data-testid="provider-name-input" v-model="form.name" placeholder="Example: OpenAI" />
         </el-form-item>
-        <el-form-item label="协议类型" prop="providerType">
-          <el-select v-model="form.providerType" placeholder="选择协议类型" :disabled="isEdit" style="width: 100%">
-            <el-option label="OpenAI 兼容" value="openai_compatible" />
+        <el-form-item label="Provider Type" prop="providerType">
+          <el-select
+            data-testid="provider-type-select"
+            v-model="form.providerType"
+            placeholder="Select provider type"
+            :disabled="isEdit"
+            style="width: 100%"
+          >
+            <el-option label="OpenAI Compatible" value="openai_compatible" />
             <el-option label="Anthropic" value="anthropic" />
             <el-option label="Azure OpenAI" value="azure_openai" />
             <el-option label="Ollama" value="ollama" />
           </el-select>
         </el-form-item>
         <el-form-item label="Base URL" prop="baseUrl">
-          <el-input v-model="form.baseUrl" placeholder="https://api.openai.com" />
+          <el-input data-testid="provider-base-url-input" v-model="form.baseUrl" placeholder="https://api.openai.com" />
         </el-form-item>
-        <el-form-item label="鉴权类型" prop="authType">
-          <el-select v-model="form.authType" placeholder="选择鉴权类型" style="width: 100%">
+        <el-form-item label="Auth Type" prop="authType">
+          <el-select data-testid="provider-auth-type-select" v-model="form.authType" placeholder="Select auth type" style="width: 100%">
             <el-option label="Bearer Token" value="bearer" />
             <el-option label="API Key Header" value="api_key" />
             <el-option label="Azure API Key" value="azure_api_key" />
-            <el-option label="无鉴权" value="none" />
+            <el-option label="No Auth" value="none" />
           </el-select>
         </el-form-item>
         <el-form-item label="API Key" prop="apiKey">
-          <el-input v-model="form.apiKey" type="password" show-password placeholder="编辑时留空表示不修改原密钥" />
+          <el-input
+            data-testid="provider-api-key-input"
+            v-model="form.apiKey"
+            type="password"
+            show-password
+            placeholder="Leave blank while editing to keep the original key"
+          />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
+        <el-form-item label="Status" prop="status">
           <el-radio-group v-model="form.status">
-            <el-radio label="active">启用</el-radio>
-            <el-radio label="inactive">禁用</el-radio>
+            <el-radio label="active">Active</el-radio>
+            <el-radio label="inactive">Inactive</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
+        <el-form-item label="Remark" prop="remark">
           <el-input v-model="form.remark" type="textarea" :rows="2" />
         </el-form-item>
       </template>
@@ -155,21 +167,21 @@ const modelMap = ref<Record<number, any[]>>({})
 const testingProviders = ref<Record<number, boolean>>({})
 
 const columns = [
-  { prop: 'name', label: '名称', minWidth: 160 },
-  { prop: 'providerType', label: '协议类型', width: 140 },
+  { prop: 'name', label: 'Name', minWidth: 160 },
+  { prop: 'providerType', label: 'Provider Type', width: 140 },
   { prop: 'baseUrl', label: 'Base URL', minWidth: 240 },
-  { prop: 'status', label: '状态', width: 90, slot: 'status' },
-  { prop: 'healthStatus', label: '健康状态', width: 140, slot: 'healthStatus' },
-  { prop: 'modelCount', label: '模型数', width: 100, slot: 'modelCount' },
-  { prop: 'action', label: '操作', width: 220, slot: 'action' }
+  { prop: 'status', label: 'Status', width: 90, slot: 'status' },
+  { prop: 'healthStatus', label: 'Health', width: 140, slot: 'healthStatus' },
+  { prop: 'modelCount', label: 'Models', width: 100, slot: 'modelCount' },
+  { prop: 'action', label: 'Actions', width: 220, slot: 'action' }
 ]
 
 const formRules = {
-  name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
-  providerType: [{ required: true, message: '请选择协议类型', trigger: 'change' }],
-  baseUrl: [{ required: true, message: '请输入 Base URL', trigger: 'blur' }],
-  authType: [{ required: true, message: '请选择鉴权类型', trigger: 'change' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+  name: [{ required: true, message: 'Please enter a provider name', trigger: 'blur' }],
+  providerType: [{ required: true, message: 'Please select a provider type', trigger: 'change' }],
+  baseUrl: [{ required: true, message: 'Please enter a base URL', trigger: 'blur' }],
+  authType: [{ required: true, message: 'Please select an auth type', trigger: 'change' }],
+  status: [{ required: true, message: 'Please select a status', trigger: 'change' }]
 }
 
 const fetchProviderList = (params: { page: number; size: number }) => {
@@ -195,7 +207,7 @@ const healthLabel = (status?: string) => {
 }
 
 const toggleExpand = (row: ProviderListItem) => {
-  (tableRef.value as any)?.$refs?.table?.toggleRowExpansion?.(row)
+  ;(tableRef.value as any)?.$refs?.table?.toggleRowExpansion?.(row)
 }
 
 const handleExpandChange = async (row: ProviderListItem, expandedRows: ProviderListItem[]) => {
@@ -235,10 +247,10 @@ const handleSubmit = async (data: any) => {
     const { _isEdit, ...payload } = data
     if (_isEdit && data.id) {
       await updateProvider(data.id, payload)
-      ElMessage.success('更新成功')
+      ElMessage.success('Provider updated successfully')
     } else {
       await createProvider(payload)
-      ElMessage.success('创建成功，请测试连接后创建 Agent')
+      ElMessage.success('Provider created successfully')
     }
     dialogRef.value?.close()
     tableRef.value?.refresh()
@@ -254,7 +266,7 @@ const handleDelete = useConfirm(
     await deleteProvider(row.id)
     tableRef.value?.refresh()
   },
-  { title: '删除供应商', message: '删除后不可恢复，确认删除该供应商吗？' }
+  { title: 'Delete provider', message: 'Deleting this provider cannot be undone. Continue?' }
 )
 
 const handleTestConnection = async (row: ProviderListItem) => {
@@ -262,11 +274,11 @@ const handleTestConnection = async (row: ProviderListItem) => {
   try {
     const result = await testConnection(row.id)
     if (result.success) {
-      const latencyText = result.latencyMs ? `，耗时 ${result.latencyMs}ms` : ''
-      const modelText = result.modelCount !== undefined ? `，发现 ${result.modelCount} 个模型` : ''
-      ElMessage.success(`连接成功${latencyText}${modelText}。下一步可以创建 Agent。`)
+      const latencyText = result.latencyMs ? `, latency ${result.latencyMs}ms` : ''
+      const modelText = result.modelCount !== undefined ? `, discovered ${result.modelCount} models` : ''
+      ElMessage.success(`Connection succeeded${latencyText}${modelText}`)
     } else {
-      ElMessage.error(result.errorMessage || '连接失败，请检查 API Key、Base URL 或网络连通性')
+      ElMessage.error(result.errorMessage || 'Connection failed, please check the API key, base URL, or network.')
     }
     tableRef.value?.refresh()
     modelMap.value[row.id] = []
