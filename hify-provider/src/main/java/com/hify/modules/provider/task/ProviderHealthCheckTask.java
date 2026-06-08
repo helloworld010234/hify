@@ -32,6 +32,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 @RequiredArgsConstructor
 public class ProviderHealthCheckTask {
 
+    private static final int MAX_ERROR_MSG_LENGTH = 512;
+
     private final ProviderMapper providerMapper;
     private final ProviderConnectionTestService connectionTestService;
     private final ProviderHealthMapper healthMapper;
@@ -89,6 +91,7 @@ public class ProviderHealthCheckTask {
 
     private void updateHealth(Long providerId, String status, int consecutiveFailures,
                               long latencyMs, String errorMsg) {
+        String normalizedErrorMsg = normalizeErrorMsg(errorMsg);
         ProviderHealth existing = healthMapper.selectByProviderId(providerId);
         if (existing == null) {
             ProviderHealth health = new ProviderHealth();
@@ -96,12 +99,19 @@ public class ProviderHealthCheckTask {
             health.setHealthStatus(status);
             health.setConsecutiveFailures(consecutiveFailures);
             health.setLastCheckTime(LocalDateTime.now());
-            health.setLastErrorMsg(errorMsg);
+            health.setLastErrorMsg(normalizedErrorMsg);
             health.setResponseTimeMs(latencyMs);
             healthMapper.insert(health);
         } else {
             healthMapper.updateByProviderId(providerId, status, consecutiveFailures,
-                    LocalDateTime.now(), errorMsg, latencyMs);
+                    LocalDateTime.now(), normalizedErrorMsg, latencyMs);
         }
+    }
+
+    private String normalizeErrorMsg(String errorMsg) {
+        if (errorMsg == null || errorMsg.length() <= MAX_ERROR_MSG_LENGTH) {
+            return errorMsg;
+        }
+        return errorMsg.substring(0, MAX_ERROR_MSG_LENGTH);
     }
 }

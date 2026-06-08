@@ -1,7 +1,7 @@
 <template>
   <div class="workflow-create">
     <div class="page-header">
-      <h2>新建工作流</h2>
+      <h2>Create Workflow</h2>
     </div>
 
     <el-form
@@ -11,46 +11,47 @@
       label-width="100px"
       class="workflow-form"
     >
-      <el-form-item label="名称" prop="name">
+      <el-form-item label="Name" prop="name">
         <el-input
+          data-testid="workflow-name-input"
           v-model="form.name"
-          placeholder="请输入工作流名称"
+          placeholder="Enter a workflow name"
           maxlength="100"
           show-word-limit
         />
       </el-form-item>
 
-      <el-form-item label="描述" prop="description">
+      <el-form-item label="Description" prop="description">
         <el-input
           v-model="form.description"
           type="textarea"
           :rows="2"
-          placeholder="请输入工作流描述（可选）"
+          placeholder="Enter a workflow description"
           maxlength="500"
           show-word-limit
         />
       </el-form-item>
 
-      <el-form-item label="工作流配置" prop="configJson">
+      <el-form-item label="Workflow JSON" prop="configJson">
         <div class="json-editor-wrapper">
           <el-input
             v-model="form.configJson"
             type="textarea"
             :rows="20"
-            placeholder="请输入工作流配置 JSON"
+            placeholder="Enter workflow config JSON"
             class="json-editor"
           />
           <div class="json-actions">
             <el-button type="primary" plain size="small" @click="handleFormat">
-              格式化
+              Format
             </el-button>
           </div>
         </div>
       </el-form-item>
 
       <el-form-item>
-        <el-button type="primary" @click="handleSubmit">提交</el-button>
-        <el-button @click="handleCancel">取消</el-button>
+        <el-button data-testid="workflow-submit-button" type="primary" @click="handleSubmit">Submit</el-button>
+        <el-button @click="handleCancel">Cancel</el-button>
       </el-form-item>
     </el-form>
   </div>
@@ -70,66 +71,66 @@ const defaultConfig = JSON.stringify({
     {
       nodeKey: 'start',
       type: 'START',
-      name: '开始',
+      name: 'Start',
       config: {
         inputVariables: [
-          { name: 'userMessage', type: 'string', description: '用户输入', required: true }
+          { name: 'userMessage', type: 'string', description: 'User input', required: true }
         ]
       }
     },
     {
       nodeKey: 'classify',
       type: 'LLM',
-      name: '问题分类',
+      name: 'Classify',
       config: {
         modelConfigId: 3,
-        prompt: '判断用户问题类型，只回复一个词：售前、售后、技术。',
+        prompt: 'Classify the user question into one word: sales, support, or technical.',
         outputVariable: 'intent'
       }
     },
     {
       nodeKey: 'route',
       type: 'CONDITION',
-      name: '路由分发',
+      name: 'Route',
       config: {
         expression: '{{classify.intent}}',
         outputVariable: 'result'
       }
     },
     {
-      nodeKey: 'pre_sales',
+      nodeKey: 'sales',
       type: 'LLM',
-      name: '售前咨询',
+      name: 'Sales',
       config: {
         modelConfigId: 3,
-        prompt: '你是售前顾问，请热情专业地回答用户问题。',
+        prompt: 'You are a sales assistant. Answer warmly and professionally.',
         outputVariable: 'reply'
       }
     },
     {
-      nodeKey: 'after_sales',
+      nodeKey: 'support',
       type: 'LLM',
-      name: '售后服务',
+      name: 'Support',
       config: {
         modelConfigId: 3,
-        prompt: '你是售后客服，请耐心解决用户问题。',
+        prompt: 'You are a support assistant. Resolve the user issue patiently.',
         outputVariable: 'reply'
       }
     },
     {
-      nodeKey: 'tech_support',
+      nodeKey: 'technical',
       type: 'LLM',
-      name: '技术支持',
+      name: 'Technical',
       config: {
         modelConfigId: 3,
-        prompt: '你是技术支持工程师，请提供专业的技术解答。',
+        prompt: 'You are a technical assistant. Provide a precise technical answer.',
         outputVariable: 'reply'
       }
     },
     {
       nodeKey: 'end',
       type: 'END',
-      name: '结束',
+      name: 'End',
       config: {
         outputVariable: 'reply'
       }
@@ -138,12 +139,12 @@ const defaultConfig = JSON.stringify({
   edges: [
     { sourceNodeKey: 'start', targetNodeKey: 'classify' },
     { sourceNodeKey: 'classify', targetNodeKey: 'route' },
-    { sourceNodeKey: 'route', targetNodeKey: 'pre_sales', condition: '售前' },
-    { sourceNodeKey: 'route', targetNodeKey: 'after_sales', condition: '售后' },
-    { sourceNodeKey: 'route', targetNodeKey: 'tech_support', condition: '技术' },
-    { sourceNodeKey: 'pre_sales', targetNodeKey: 'end' },
-    { sourceNodeKey: 'after_sales', targetNodeKey: 'end' },
-    { sourceNodeKey: 'tech_support', targetNodeKey: 'end' }
+    { sourceNodeKey: 'route', targetNodeKey: 'sales', condition: 'sales' },
+    { sourceNodeKey: 'route', targetNodeKey: 'support', condition: 'support' },
+    { sourceNodeKey: 'route', targetNodeKey: 'technical', condition: 'technical' },
+    { sourceNodeKey: 'sales', targetNodeKey: 'end' },
+    { sourceNodeKey: 'support', targetNodeKey: 'end' },
+    { sourceNodeKey: 'technical', targetNodeKey: 'end' }
   ]
 }, null, 2)
 
@@ -154,9 +155,9 @@ const form = ref({
 })
 
 const rules: FormRules = {
-  name: [{ required: true, message: '请输入工作流名称', trigger: 'blur' }],
+  name: [{ required: true, message: 'Please enter a workflow name', trigger: 'blur' }],
   configJson: [
-    { required: true, message: '请输入工作流配置', trigger: 'blur' },
+    { required: true, message: 'Please enter a workflow config', trigger: 'blur' },
     {
       validator: (_rule: any, value: string, callback: (error?: Error) => void) => {
         if (!value) {
@@ -166,12 +167,12 @@ const rules: FormRules = {
         try {
           const config = JSON.parse(value)
           if (!Array.isArray(config.nodes) || !Array.isArray(config.edges)) {
-            callback(new Error('工作流配置必须包含 nodes 和 edges 数组'))
+            callback(new Error('Workflow config must contain nodes and edges arrays'))
             return
           }
           callback()
         } catch (e) {
-          callback(new Error('JSON 格式错误，请检查工作流配置'))
+          callback(new Error('Invalid JSON format'))
         }
       },
       trigger: 'blur'
@@ -183,9 +184,9 @@ const handleFormat = () => {
   try {
     const parsed = JSON.parse(form.value.configJson)
     form.value.configJson = JSON.stringify(parsed, null, 2)
-    ElMessage.success('格式化成功')
+    ElMessage.success('Formatted successfully')
   } catch (e) {
-    ElMessage.error('JSON 格式错误，无法格式化')
+    ElMessage.error('Invalid JSON, unable to format')
   }
 }
 
@@ -197,12 +198,12 @@ const handleSubmit = async () => {
   try {
     config = JSON.parse(form.value.configJson)
   } catch (e) {
-    ElMessage.error('JSON 格式错误，请检查工作流配置')
+    ElMessage.error('Invalid JSON format')
     return
   }
 
   if (!Array.isArray(config.nodes) || !Array.isArray(config.edges)) {
-    ElMessage.error('工作流配置必须包含 nodes 和 edges 数组')
+    ElMessage.error('Workflow config must contain nodes and edges arrays')
     return
   }
 
@@ -214,10 +215,10 @@ const handleSubmit = async () => {
       nodes: config.nodes,
       edges: config.edges
     })
-    ElMessage.success('创建成功')
+    ElMessage.success('Workflow created successfully')
     router.push('/workflows')
   } catch (e: any) {
-    // request interceptor 已显示错误
+    // request interceptor already shows the failure.
   }
 }
 

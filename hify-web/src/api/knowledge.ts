@@ -1,5 +1,5 @@
 import axios, { type AxiosResponse } from 'axios'
-import { get, post, del } from '@/utils/request'
+import { get, post, put, del } from '@/utils/request'
 
 export interface KnowledgeBase {
   id?: number
@@ -57,7 +57,7 @@ export function createKnowledgeBase(data: KnowledgeBase) {
 
 /** 更新知识库 */
 export function updateKnowledgeBase(id: number, data: KnowledgeBase) {
-  return post<void>(`/v1/knowledge-bases/${id}`, data)
+  return put<void>(`/v1/knowledge-bases/${id}`, data)
 }
 
 /** 删除知识库 */

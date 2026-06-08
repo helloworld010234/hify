@@ -1,8 +1,8 @@
 <template>
   <div class="workflow-list">
     <div class="page-header">
-      <h2>工作流管理</h2>
-      <el-button type="primary" @click="handleAdd">新建工作流</el-button>
+      <h2>Workflow Management</h2>
+      <el-button data-testid="workflow-add-button" type="primary" @click="handleAdd">Create Workflow</el-button>
     </div>
 
     <HifyTable
@@ -13,7 +13,7 @@
       <template #toolbar>
         <el-input
           v-model="searchKey"
-          placeholder="搜索工作流名称"
+          placeholder="Search workflow name"
           clearable
           style="width: 240px"
         />
@@ -21,12 +21,12 @@
 
       <template #enabled="{ row }">
         <el-tag :type="row.enabled === 1 ? 'success' : 'info'" size="small">
-          {{ row.enabled === 1 ? '启用' : '禁用' }}
+          {{ row.enabled === 1 ? 'Active' : 'Inactive' }}
         </el-tag>
       </template>
 
       <template #action="{ row }">
-        <el-button link type="danger" class="delete-btn" @click="handleDelete(row)">删除</el-button>
+        <el-button link type="danger" class="delete-btn" @click="handleDelete(row)">Delete</el-button>
       </template>
     </HifyTable>
   </div>
@@ -48,12 +48,12 @@ const tableRef = ref<InstanceType<typeof HifyTable>>()
 const searchKey = ref('')
 
 const columns = [
-  { prop: 'name', label: '名称', minWidth: 180 },
-  { prop: 'enabled', label: '状态', width: 90, slot: 'enabled' },
-  { prop: 'nodeCount', label: '节点数', width: 90 },
-  { prop: 'edgeCount', label: '边数', width: 90 },
-  { prop: 'createdAt', label: '创建时间', width: 170 },
-  { prop: 'action', label: '操作', width: 100, slot: 'action' }
+  { prop: 'name', label: 'Name', minWidth: 180 },
+  { prop: 'enabled', label: 'Status', width: 90, slot: 'enabled' },
+  { prop: 'nodeCount', label: 'Nodes', width: 90 },
+  { prop: 'edgeCount', label: 'Edges', width: 90 },
+  { prop: 'createdAt', label: 'Created At', width: 170 },
+  { prop: 'action', label: 'Actions', width: 100, slot: 'action' }
 ]
 
 const fetchWorkflowList = (params: { page: number; size: number }) => {
@@ -72,7 +72,7 @@ const handleDelete = useConfirm(
     await deleteWorkflow(row.id)
     tableRef.value?.refresh()
   },
-  { title: '删除工作流', message: '删除后不可恢复，确认吗？' }
+  { title: 'Delete workflow', message: 'Deleting this workflow cannot be undone. Continue?' }
 )
 </script>
 

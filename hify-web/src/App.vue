@@ -2,7 +2,7 @@
   <el-container class="layout">
     <el-aside width="220px" class="sidebar">
       <div class="logo">
-        <span class="logo-icon">◆</span>
+        <span class="logo-icon">H</span>
         <span class="logo-text">Hify</span>
       </div>
       <el-menu
@@ -13,25 +13,29 @@
         text-color="var(--color-text-sidebar)"
         active-text-color="var(--color-text-sidebar-active)"
       >
-        <el-menu-item index="/providers">
+        <el-menu-item index="/providers" data-testid="nav-providers">
           <el-icon><Setting /></el-icon>
-          <span>模型管理</span>
+          <span>Providers</span>
         </el-menu-item>
-        <el-menu-item index="/agents">
+        <el-menu-item index="/agents" data-testid="nav-agents">
           <el-icon><User /></el-icon>
-          <span>Agent 管理</span>
+          <span>Agents</span>
         </el-menu-item>
-        <el-menu-item index="/chat">
+        <el-menu-item index="/chat" data-testid="nav-chat">
           <el-icon><ChatLineRound /></el-icon>
-          <span>对话</span>
+          <span>Chat</span>
         </el-menu-item>
-        <el-menu-item index="/mcp-servers">
+        <el-menu-item index="/knowledge-bases" data-testid="nav-knowledge-bases">
+          <el-icon><Collection /></el-icon>
+          <span>Knowledge</span>
+        </el-menu-item>
+        <el-menu-item index="/mcp-servers" data-testid="nav-mcp-servers">
           <el-icon><Tools /></el-icon>
           <span>MCP Server</span>
         </el-menu-item>
-        <el-menu-item index="/workflows">
+        <el-menu-item index="/workflows" data-testid="nav-workflows">
           <el-icon><Connection /></el-icon>
-          <span>工作流</span>
+          <span>Workflows</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -44,7 +48,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Setting, User, ChatLineRound, Tools, Connection } from '@element-plus/icons-vue'
+import { Setting, User, ChatLineRound, Collection, Tools, Connection } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeMenu = computed(() => route.path)

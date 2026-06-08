@@ -1,0 +1,2 @@
+Hify knowledge sample for browser E2E upload.
+This file is intentionally small so the document upload flow stays lightweight.

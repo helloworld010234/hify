@@ -61,7 +61,7 @@ defineExpose({
 <template>
   <el-dialog
     v-model="visible"
-    :title="(isEdit ? '编辑' : '新增') + title"
+    :title="(isEdit ? '缂栬緫' : '鏂板') + title"
     :width="width"
     :close-on-click-modal="false"
     :show-close="!submitting"
@@ -80,9 +80,9 @@ defineExpose({
     </el-form>
     <template #footer>
       <div class="dialog-footer">
-        <el-button :disabled="submitting" @click="close">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">
-          {{ isEdit ? '保存' : '创建' }}
+        <el-button data-testid="dialog-cancel-button" :disabled="submitting" @click="close">鍙栨秷</el-button>
+        <el-button data-testid="dialog-submit-button" type="primary" :loading="submitting" @click="handleSubmit">
+          {{ isEdit ? '淇濆瓨' : '鍒涘缓' }}
         </el-button>
       </div>
     </template>

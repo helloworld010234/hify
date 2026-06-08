@@ -1,46 +1,44 @@
 <template>
   <div class="documents-page">
-    <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
         <el-button link @click="$router.push('/knowledge-bases')">
-          <el-icon><ArrowLeft /></el-icon> 返回
+          <el-icon><ArrowLeft /></el-icon> Back
         </el-button>
-        <h2>{{ kbName }} - 文档管理</h2>
+        <h2>{{ kbName }} - Documents</h2>
       </div>
       <div class="header-actions">
-        <el-button :disabled="!hasReadyDocuments" @click="goToAgents">绑定到 Agent</el-button>
-        <el-button type="primary" @click="uploadVisible = true">上传文档</el-button>
+        <el-button :disabled="!hasReadyDocuments" @click="goToAgents">Bind To Agent</el-button>
+        <el-button data-testid="document-upload-open-button" type="primary" @click="uploadVisible = true">Upload Document</el-button>
       </div>
     </div>
 
-    <!-- 文档列表 -->
     <div class="table-card">
       <el-alert
         v-if="hasProcessingDocuments"
         type="info"
-        title="文档正在解析"
-        description="解析完成后即可绑定到 Agent，用于 Chat 检索回答。"
+        title="Documents are being processed"
+        description="Once processing completes, you can bind this knowledge base to an agent for chat retrieval."
         show-icon
         :closable="false"
         class="path-alert"
       />
       <el-table :data="documentList" v-loading="loading" stripe style="width: 100%">
-        <el-table-column prop="name" label="文件名" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="fileType" label="类型" width="80">
+        <el-table-column prop="name" label="File Name" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="fileType" label="Type" width="80">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{ row.fileType }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="fileSize" label="大小" width="100">
+        <el-table-column prop="fileSize" label="Size" width="100">
           <template #default="{ row }">
             {{ formatFileSize(row.fileSize) }}
           </template>
         </el-table-column>
-        <el-table-column prop="chunkCount" label="分块数" width="80" />
-        <el-table-column prop="status" label="状态" width="120">
+        <el-table-column prop="chunkCount" label="Chunks" width="80" />
+        <el-table-column prop="status" label="Status" width="120">
           <template #default="{ row }">
-            <el-tooltip v-if="row.status === 'FAILED'" :content="row.errorMessage || '处理失败'" placement="top">
+            <el-tooltip v-if="row.status === 'FAILED'" :content="row.errorMessage || 'Processing failed'" placement="top">
               <el-tag :type="statusTagType(row.status)" size="small">
                 <el-icon v-if="row.status === 'PROCESSING'" class="is-loading"><Loading /></el-icon>
                 {{ statusText(row.status) }}
@@ -52,26 +50,24 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="170" />
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column prop="createdAt" label="Created At" width="170" />
+        <el-table-column label="Actions" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleViewChunks(row)">查看分块</el-button>
+            <el-button link type="primary" @click="handleViewChunks(row)">View Chunks</el-button>
             <el-button
               link
               type="danger"
               :disabled="row.status === 'PROCESSING'"
               @click="handleDelete(row)"
             >
-              删除
+              Delete
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <!-- 空状态 -->
-      <el-empty v-if="!loading && documentList.length === 0" description="暂无文档，请点击右上角上传" :image-size="100" />
+      <el-empty v-if="!loading && documentList.length === 0" description="No documents yet. Upload one to get started." :image-size="100" />
 
-      <!-- 分页 -->
       <div v-if="total > 0" class="pagination-wrapper">
         <el-pagination
           v-model:current-page="currentPage"
@@ -85,10 +81,9 @@
       </div>
     </div>
 
-    <!-- 上传弹窗 -->
     <el-dialog
       v-model="uploadVisible"
-      title="上传文档"
+      title="Upload Document"
       width="520px"
       :close-on-click-modal="false"
       destroy-on-close
@@ -104,8 +99,8 @@
         class="upload-area"
       >
         <el-icon class="upload-icon"><UploadFilled /></el-icon>
-        <div class="upload-text">将文件拖到此处，或<em>点击上传</em></div>
-        <div class="upload-hint">支持 txt / md / pdf，单个文件不超过 10MB</div>
+        <div class="upload-text">Drop a file here or <em>click to upload</em></div>
+        <div class="upload-hint">Supports txt / md / pdf, max 10MB per file</div>
       </el-upload>
 
       <div v-if="selectedFile" class="file-preview">
@@ -115,23 +110,22 @@
       </div>
 
       <template #footer>
-        <el-button @click="uploadVisible = false">取消</el-button>
-        <el-button type="primary" :disabled="!selectedFile" :loading="uploading" @click="handleUpload">
-          开始上传
+        <el-button @click="uploadVisible = false">Cancel</el-button>
+        <el-button data-testid="document-upload-submit-button" type="primary" :disabled="!selectedFile" :loading="uploading" @click="handleUpload">
+          Start Upload
         </el-button>
       </template>
     </el-dialog>
 
-    <!-- 查看分块弹窗 -->
     <el-dialog
       v-model="chunksVisible"
-      :title="`文档分块 - ${currentDocName}`"
+      :title="`Document Chunks - ${currentDocName}`"
       width="700px"
       destroy-on-close
     >
       <el-table :data="chunkList" v-loading="chunksLoading" stripe max-height="500">
-        <el-table-column type="index" label="序号" width="60" />
-        <el-table-column label="内容" min-width="400">
+        <el-table-column type="index" label="#" width="60" />
+        <el-table-column label="Content" min-width="400">
           <template #default="{ row }">
             <div class="chunk-content">
               <span v-if="!row._expanded">{{ truncate(row.content, 200) }}</span>
@@ -143,12 +137,12 @@
                 size="small"
                 @click="row._expanded = !row._expanded"
               >
-                {{ row._expanded ? '收起' : '展开全文' }}
+                {{ row._expanded ? 'Collapse' : 'Expand' }}
               </el-button>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="tokenCount" label="Token 数" width="100" />
+        <el-table-column prop="tokenCount" label="Tokens" width="100" />
       </el-table>
     </el-dialog>
   </div>
@@ -175,19 +169,17 @@ const route = useRoute()
 const router = useRouter()
 const kbId = Number(route.params.id)
 
-// ==================== 知识库信息 ====================
-const kbName = ref('知识库')
+const kbName = ref('Knowledge Base')
 
 const loadKbInfo = async () => {
   try {
     const res = await getKnowledgeBaseDetail(kbId)
     kbName.value = res.name
   } catch (e) {
-    // 静默失败，使用默认名称
+    // Silently fall back to the default title.
   }
 }
 
-// ==================== 文档列表 ====================
 const loading = ref(false)
 const documentList = ref<DocumentItem[]>([])
 const currentPage = ref(1)
@@ -227,7 +219,6 @@ const handleSizeChange = (size: number) => {
   fetchDocumentList()
 }
 
-// ==================== 状态展示 ====================
 const statusTagType = (status: string) => {
   switch (status) {
     case 'PENDING': return 'info'
@@ -240,10 +231,10 @@ const statusTagType = (status: string) => {
 
 const statusText = (status: string) => {
   switch (status) {
-    case 'PENDING': return '待处理'
-    case 'PROCESSING': return '处理中'
-    case 'DONE': return '已完成'
-    case 'FAILED': return '失败'
+    case 'PENDING': return 'Pending'
+    case 'PROCESSING': return 'Processing'
+    case 'DONE': return 'Done'
+    case 'FAILED': return 'Failed'
     default: return status
   }
 }
@@ -254,7 +245,6 @@ const formatFileSize = (size: number) => {
   return (size / (1024 * 1024)).toFixed(2) + ' MB'
 }
 
-// ==================== 上传 ====================
 const uploadVisible = ref(false)
 const selectedFile = ref<File | null>(null)
 const uploading = ref(false)
@@ -263,17 +253,15 @@ const handleFileChange = (uploadFile: any) => {
   const file = uploadFile.raw as File
   if (!file) return
 
-  // 校验文件类型
   const ext = file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase()
   if (!['txt', 'md', 'pdf'].includes(ext)) {
-    ElMessage.error('不支持的文件类型，仅支持 txt / md / pdf')
+    ElMessage.error('Unsupported file type. Please upload txt, md, or pdf.')
     selectedFile.value = null
     return
   }
 
-  // 校验文件大小（10MB）
   if (file.size > 10 * 1024 * 1024) {
-    ElMessage.error('文件大小超过 10MB 限制')
+    ElMessage.error('File size exceeds the 10MB limit')
     selectedFile.value = null
     return
   }
@@ -286,25 +274,22 @@ const handleUpload = async () => {
   uploading.value = true
   try {
     const res: any = await uploadDocument(kbId, selectedFile.value)
-    ElMessage.success('上传成功，正在解析文档')
+    ElMessage.success('Upload succeeded, document processing has started')
     uploadVisible.value = false
     selectedFile.value = null
 
-    // 立即刷新列表，新文档状态为 PENDING
     await fetchDocumentList()
 
-    // 启动轮询跟踪最新上传的文档
     if (res?.data) {
       startPolling(res.data)
     }
   } catch (e: any) {
-    // request interceptor 已显示错误
+    // request interceptor already shows the failure.
   } finally {
     uploading.value = false
   }
 }
 
-// ==================== 轮询 ====================
 const pollIntervals = ref<Map<number, number>>(new Map())
 
 const startPolling = (documentId: number) => {
@@ -313,25 +298,22 @@ const startPolling = (documentId: number) => {
   const intervalId = window.setInterval(async () => {
     try {
       const doc = await getDocumentDetail(documentId)
-      // 更新列表中对应文档的状态
       const idx = documentList.value.findIndex(d => d.id === documentId)
       if (idx !== -1) {
         documentList.value[idx] = { ...documentList.value[idx], ...doc }
       }
 
-      // 状态变为 DONE 或 FAILED 时停止轮询
       if (doc.status === 'DONE' || doc.status === 'FAILED') {
         stopPolling(documentId)
         if (doc.status === 'DONE') {
-          ElMessage.success(`文档「${doc.name}」处理完成，可绑定到 Agent 使用`)
+          ElMessage.success(`Document "${doc.name}" finished processing`)
         } else if (doc.status === 'FAILED') {
-          ElMessage.error(`文档「${doc.name}」处理失败：${doc.errorMessage}`)
+          ElMessage.error(`Document "${doc.name}" failed: ${doc.errorMessage}`)
         }
-        // 刷新列表以更新 chunkCount 等字段
         fetchDocumentList()
       }
     } catch (e) {
-      // 轮询失败不中断，继续下次
+      // Keep polling on transient failures.
     }
   }, 3000)
 
@@ -346,7 +328,6 @@ const stopPolling = (documentId: number) => {
   }
 }
 
-// ==================== 查看分块 ====================
 const chunksVisible = ref(false)
 const chunksLoading = ref(false)
 const chunkList = ref<(DocumentChunkItem & { _expanded?: boolean })[]>([])
@@ -360,7 +341,7 @@ const handleViewChunks = async (row: DocumentItem) => {
     const res = await getDocumentChunks(row.id)
     chunkList.value = (res || []).map(c => ({ ...c, _expanded: false }))
   } catch (e) {
-    // request interceptor 已显示错误
+    // request interceptor already shows the failure.
   } finally {
     chunksLoading.value = false
   }
@@ -371,24 +352,21 @@ const truncate = (text: string, len: number) => {
   return text.substring(0, len) + '...'
 }
 
-// ==================== 删除 ====================
 const handleDelete = useConfirm(
   async (row: DocumentItem) => {
     await deleteDocument(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success('Deleted successfully')
     fetchDocumentList()
   },
-  { title: '删除文档', message: '删除后该文档的向量数据也将被清空，确认吗？' }
+  { title: 'Delete document', message: 'Deleting this document will also remove its vector chunks. Continue?' }
 )
 
-// ==================== 生命周期 ====================
 onMounted(() => {
   loadKbInfo()
   fetchDocumentList()
 })
 
 onUnmounted(() => {
-  // 组件销毁时清理所有轮询，避免内存泄漏
   pollIntervals.value.forEach((intervalId) => {
     clearInterval(intervalId)
   })
@@ -444,7 +422,6 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 
-/* 上传区域 */
 .upload-area {
   width: 100%;
 }
@@ -468,53 +445,33 @@ onUnmounted(() => {
 .upload-text em {
   color: var(--el-color-primary);
   font-style: normal;
-  cursor: pointer;
 }
 
 .upload-hint {
-  font-size: 12px;
-  color: var(--color-text-tertiary);
   margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
 }
 
-/* 文件预览 */
 .file-preview {
   margin-top: var(--space-4);
-  padding: var(--space-3);
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
 }
 
 .file-name {
   flex: 1;
-  font-size: var(--text-sm);
-  color: var(--color-text-primary);
 }
 
 .file-size {
-  font-size: 12px;
-  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
 }
 
-/* 分块内容 */
 .chunk-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
   line-height: 1.6;
-}
-
-/* loading 图标动画 */
-.is-loading {
-  animation: rotating 2s linear infinite;
-  margin-right: 4px;
-}
-
-@keyframes rotating {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>
